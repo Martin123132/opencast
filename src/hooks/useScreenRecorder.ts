@@ -16,17 +16,52 @@ export function useScreenRecorder() {
   const audioContextRef = useRef<AudioContext | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const timerRef = useRef<number | null>(null)
+  const countdownTimerRef = useRef<number | null>(null)
   const chunksRef = useRef<BlobPart[]>([])
   const previewUrlRef = useRef<string | null>(null)
-  const startedAtRef = useRef(0)
+  const activeStartedAtRef = useRef(0)
+  const elapsedBeforePauseRef = useRef(0)
+  const finalDurationRef = useRef(0)
+  const discardRecordingRef = useRef(false)
   const [status, setStatus] = useState<RecorderStatus>('idle')
   const [micEnabled, setMicEnabled] = useState(true)
   const [cameraEnabled, setCameraEnabled] = useState(false)
+  const [screenReady, setScreenReady] = useState(false)
+  const [countdown, setCountdown] = useState<number | null>(null)
   const [elapsedMs, setElapsedMs] = useState(0)
   const [durationMs, setDurationMs] = useState<number | null>(null)
   const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const getCurrentElapsed = useCallback(() => {
+    if (!activeStartedAtRef.current) {
+      return elapsedBeforePauseRef.current
+    }
+
+    return elapsedBeforePauseRef.current + Date.now() - activeStartedAtRef.current
+  }, [])
+
+  const clearElapsedTimer = useCallback(() => {
+    if (timerRef.current !== null) {
+      window.clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+  }, [])
+
+  const clearCountdownTimer = useCallback(() => {
+    if (countdownTimerRef.current !== null) {
+      window.clearInterval(countdownTimerRef.current)
+      countdownTimerRef.current = null
+    }
+  }, [])
+
+  const startElapsedTimer = useCallback(() => {
+    clearElapsedTimer()
+    timerRef.current = window.setInterval(() => {
+      setElapsedMs(getCurrentElapsed())
+    }, 250)
+  }, [clearElapsedTimer, getCurrentElapsed])
 
   const cleanupCapture = useCallback(() => {
     if (animationFrameRef.current !== null) {
@@ -34,10 +69,8 @@ export function useScreenRecorder() {
       animationFrameRef.current = null
     }
 
-    if (timerRef.current !== null) {
-      window.clearInterval(timerRef.current)
-      timerRef.current = null
-    }
+    clearElapsedTimer()
+    clearCountdownTimer()
 
     stopStream(displayStreamRef.current)
     stopStream(micStreamRef.current)
@@ -48,7 +81,9 @@ export function useScreenRecorder() {
 
     void audioContextRef.current?.close()
     audioContextRef.current = null
-  }, [])
+    setCountdown(null)
+    setScreenReady(false)
+  }, [clearCountdownTimer, clearElapsedTimer])
 
   const replacePreviewUrl = useCallback((blob: Blob | null) => {
     if (previewUrlRef.current) {
@@ -67,9 +102,11 @@ export function useScreenRecorder() {
   }, [])
 
   const stopRecording = useCallback(() => {
+    clearCountdownTimer()
     const recorder = mediaRecorderRef.current
+    finalDurationRef.current = getCurrentElapsed()
 
-    if (recorder?.state === 'recording') {
+    if (recorder?.state === 'recording' || recorder?.state === 'paused') {
       setStatus('stopping')
       recorder.stop()
       return
@@ -77,7 +114,62 @@ export function useScreenRecorder() {
 
     cleanupCapture()
     setStatus('idle')
-  }, [cleanupCapture])
+  }, [cleanupCapture, clearCountdownTimer, getCurrentElapsed])
+
+  const pauseRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current
+
+    if (recorder?.state !== 'recording') {
+      return
+    }
+
+    const elapsed = getCurrentElapsed()
+    elapsedBeforePauseRef.current = elapsed
+    finalDurationRef.current = elapsed
+    activeStartedAtRef.current = 0
+    clearElapsedTimer()
+    recorder.pause()
+    setElapsedMs(elapsed)
+    setStatus('paused')
+  }, [clearElapsedTimer, getCurrentElapsed])
+
+  const resumeRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current
+
+    if (recorder?.state !== 'paused') {
+      return
+    }
+
+    activeStartedAtRef.current = Date.now()
+    recorder.resume()
+    startElapsedTimer()
+    setStatus('recording')
+  }, [startElapsedTimer])
+
+  const cancelRecording = useCallback(() => {
+    discardRecordingRef.current = true
+    clearCountdownTimer()
+    const recorder = mediaRecorderRef.current
+
+    if (recorder && recorder.state !== 'inactive') {
+      finalDurationRef.current = getCurrentElapsed()
+      setStatus('stopping')
+      recorder.stop()
+      return
+    }
+
+    cleanupCapture()
+    chunksRef.current = []
+    mediaRecorderRef.current = null
+    activeStartedAtRef.current = 0
+    elapsedBeforePauseRef.current = 0
+    finalDurationRef.current = 0
+    discardRecordingRef.current = false
+    setRecordingBlob(null)
+    setDurationMs(null)
+    setElapsedMs(0)
+    setStatus('idle')
+  }, [cleanupCapture, clearCountdownTimer, getCurrentElapsed])
 
   const startRecording = useCallback(async () => {
     if (!navigator.mediaDevices?.getDisplayMedia) {
@@ -92,6 +184,12 @@ export function useScreenRecorder() {
       setRecordingBlob(null)
       setDurationMs(null)
       setElapsedMs(0)
+      setCountdown(null)
+      setScreenReady(false)
+      discardRecordingRef.current = false
+      activeStartedAtRef.current = 0
+      elapsedBeforePauseRef.current = 0
+      finalDurationRef.current = 0
       replacePreviewUrl(null)
 
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
@@ -103,6 +201,7 @@ export function useScreenRecorder() {
         audio: true,
       })
       displayStreamRef.current = displayStream
+      setScreenReady(true)
       displayStream.getVideoTracks()[0]?.addEventListener('ended', stopRecording, { once: true })
 
       const screenVideo = await makeVideoElement(displayStream)
@@ -162,7 +261,6 @@ export function useScreenRecorder() {
       const recorder = new MediaRecorder(outputStream, mimeType ? { mimeType } : undefined)
       mediaRecorderRef.current = recorder
       chunksRef.current = []
-      startedAtRef.current = Date.now()
 
       recorder.addEventListener('dataavailable', (event) => {
         if (event.data.size > 0) {
@@ -171,32 +269,84 @@ export function useScreenRecorder() {
       })
 
       recorder.addEventListener('stop', () => {
-        const nextDurationMs = Date.now() - startedAtRef.current
+        const nextDurationMs = finalDurationRef.current || getCurrentElapsed()
+        const shouldDiscard = discardRecordingRef.current
         const blob = new Blob(chunksRef.current, { type: mimeType || 'video/webm' })
+        cleanupCapture()
+        mediaRecorderRef.current = null
+        chunksRef.current = []
+        activeStartedAtRef.current = 0
+        elapsedBeforePauseRef.current = 0
+        finalDurationRef.current = 0
+        discardRecordingRef.current = false
+
+        if (shouldDiscard) {
+          setDurationMs(null)
+          setRecordingBlob(null)
+          replacePreviewUrl(null)
+          setElapsedMs(0)
+          setStatus('idle')
+          return
+        }
+
         setDurationMs(nextDurationMs)
         setRecordingBlob(blob)
         replacePreviewUrl(blob)
-        cleanupCapture()
-        mediaRecorderRef.current = null
+        setElapsedMs(nextDurationMs)
         setStatus('ready')
       })
 
-      recorder.start(1000)
-      setStatus('recording')
-      timerRef.current = window.setInterval(() => {
-        setElapsedMs(Date.now() - startedAtRef.current)
-      }, 250)
+      let remaining = 3
+      setCountdown(remaining)
+      setStatus('countdown')
+      countdownTimerRef.current = window.setInterval(() => {
+        remaining -= 1
+
+        if (remaining > 0) {
+          setCountdown(remaining)
+          return
+        }
+
+        clearCountdownTimer()
+        setCountdown(null)
+
+        if (discardRecordingRef.current || mediaRecorderRef.current !== recorder) {
+          return
+        }
+
+        activeStartedAtRef.current = Date.now()
+        elapsedBeforePauseRef.current = 0
+        finalDurationRef.current = 0
+        recorder.start(1000)
+        setStatus('recording')
+        startElapsedTimer()
+      }, 1000)
     } catch (caughtError) {
       cleanupCapture()
+      mediaRecorderRef.current = null
       setStatus('error')
       setError(formatCaptureError(caughtError))
     }
-  }, [cameraEnabled, cleanupCapture, micEnabled, replacePreviewUrl, stopRecording])
+  }, [
+    cameraEnabled,
+    cleanupCapture,
+    clearCountdownTimer,
+    getCurrentElapsed,
+    micEnabled,
+    replacePreviewUrl,
+    startElapsedTimer,
+    stopRecording,
+  ])
 
   const resetRecording = useCallback(() => {
+    discardRecordingRef.current = false
+    activeStartedAtRef.current = 0
+    elapsedBeforePauseRef.current = 0
+    finalDurationRef.current = 0
     setRecordingBlob(null)
     setDurationMs(null)
     setElapsedMs(0)
+    setCountdown(null)
     replacePreviewUrl(null)
     setStatus('idle')
   }, [replacePreviewUrl])
@@ -214,6 +364,8 @@ export function useScreenRecorder() {
     status,
     micEnabled,
     cameraEnabled,
+    screenReady,
+    countdown,
     elapsedMs,
     durationMs,
     recordingBlob,
@@ -221,6 +373,9 @@ export function useScreenRecorder() {
     error,
     startRecording,
     stopRecording,
+    pauseRecording,
+    resumeRecording,
+    cancelRecording,
     resetRecording,
     toggleMic: () => setMicEnabled((enabled) => !enabled),
     toggleCamera: () => setCameraEnabled((enabled) => !enabled),

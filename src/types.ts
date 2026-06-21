@@ -14,7 +14,22 @@ export type Recording = {
   viewCount: number
 }
 
-export type RecorderStatus = 'idle' | 'requesting' | 'recording' | 'stopping' | 'ready' | 'error'
+export type RecorderStatus =
+  | 'idle'
+  | 'requesting'
+  | 'countdown'
+  | 'recording'
+  | 'paused'
+  | 'stopping'
+  | 'ready'
+  | 'error'
+
+export type AppConfig = {
+  dataRoot: string
+  recordingsDir: string
+  requiredStorageDrive: string
+  dataRootCompliant: boolean
+}
 
 export type ShareSettingsInput = {
   expiresAt?: string | null

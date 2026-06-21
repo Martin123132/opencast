@@ -10,7 +10,9 @@ import {
   isShareExpired,
   listRecordings,
   recordShareView,
+  deleteRecording,
   revokeShare,
+  updateRecording,
   type ShareSettingsInput,
   type Recording,
   saveRecording,
@@ -45,6 +47,8 @@ app.get('/api/health', async () => ({
 app.get('/api/config', async () => ({
   dataRoot: appConfig.dataRoot,
   recordingsDir: storagePaths.recordingsDir,
+  requiredStorageDrive: appConfig.requiredStorageDrive,
+  dataRootCompliant: true,
 }))
 
 app.get('/api/recordings', async () => {
@@ -79,6 +83,29 @@ app.post('/api/recordings', async (request, reply) => {
 app.get('/api/recordings/:id', async (request, reply) => {
   const { id } = request.params as { id: string }
   const recording = await getRecording(id)
+
+  if (!recording) {
+    return reply.code(404).send({ error: 'Recording not found' })
+  }
+
+  return { recording: toPublicRecording(recording) }
+})
+
+app.patch('/api/recordings/:id', async (request, reply) => {
+  const { id } = request.params as { id: string }
+  const body = request.body as { title?: string } | undefined
+  const recording = await updateRecording(id, { title: body?.title })
+
+  if (!recording) {
+    return reply.code(404).send({ error: 'Recording not found' })
+  }
+
+  return { recording: toPublicRecording(recording) }
+})
+
+app.delete('/api/recordings/:id', async (request, reply) => {
+  const { id } = request.params as { id: string }
+  const recording = await deleteRecording(id)
 
   if (!recording) {
     return reply.code(404).send({ error: 'Recording not found' })

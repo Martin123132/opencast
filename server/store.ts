@@ -1,5 +1,5 @@
 import { createReadStream, createWriteStream } from 'node:fs'
-import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { nanoid } from 'nanoid'
@@ -101,6 +101,48 @@ export async function saveRecording({
   const index = await readIndex()
   index.recordings.push(recording)
   await writeIndex(index)
+
+  return recording
+}
+
+export async function updateRecording(id: string, updates: { title?: string }) {
+  const index = await readIndex()
+  const recording = index.recordings.find((item) => item.id === id)
+
+  if (!recording) {
+    return null
+  }
+
+  const title = updates.title?.trim()
+
+  if (title) {
+    recording.title = title
+    recording.updatedAt = new Date().toISOString()
+  }
+
+  await writeIndex(index)
+  return recording
+}
+
+export async function deleteRecording(id: string) {
+  const index = await readIndex()
+  const recordingIndex = index.recordings.findIndex((item) => item.id === id)
+
+  if (recordingIndex === -1) {
+    return null
+  }
+
+  const [recording] = index.recordings.splice(recordingIndex, 1)
+  await writeIndex(index)
+
+  try {
+    const video = await getVideoFile(recording)
+    await unlink(video.path)
+  } catch (error) {
+    if (!isMissingFileError(error)) {
+      throw error
+    }
+  }
 
   return recording
 }
@@ -263,4 +305,13 @@ function normalizeRecording(recording: Recording) {
 
 export function isShareExpired(recording: Recording) {
   return Boolean(recording.shareExpiresAt && Date.parse(recording.shareExpiresAt) <= Date.now())
+}
+
+function isMissingFileError(error: unknown) {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: string }).code === 'ENOENT'
+  )
 }

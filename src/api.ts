@@ -1,9 +1,12 @@
 import type {
+  AppConfig,
   Recording,
   ShareAccessResponse,
   SharedRecordingResponse,
   ShareSettingsInput,
 } from './types'
+
+type ConfigResponse = AppConfig
 
 type RecordingsResponse = {
   recordings: Recording[]
@@ -17,6 +20,11 @@ export async function fetchRecordings() {
   const response = await fetch('/api/recordings')
   const body = await readJson<RecordingsResponse>(response)
   return body.recordings
+}
+
+export async function fetchAppConfig() {
+  const response = await fetch('/api/config')
+  return readJson<ConfigResponse>(response)
 }
 
 export async function fetchSharedRecording(token: string, accessToken?: string) {
@@ -55,6 +63,26 @@ export async function createShare(id: string, settings: ShareSettingsInput = {})
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(settings),
+  })
+  const body = await readJson<RecordingResponse>(response)
+  return body.recording
+}
+
+export async function updateRecording(id: string, title: string) {
+  const response = await fetch(`/api/recordings/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ title }),
+  })
+  const body = await readJson<RecordingResponse>(response)
+  return body.recording
+}
+
+export async function deleteRecording(id: string) {
+  const response = await fetch(`/api/recordings/${id}`, {
+    method: 'DELETE',
   })
   const body = await readJson<RecordingResponse>(response)
   return body.recording

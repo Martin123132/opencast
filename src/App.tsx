@@ -2,35 +2,49 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNo
 import {
   Camera,
   Check,
+  CheckCircle2,
   Clock,
   Copy,
   Download,
+  Eye,
+  FilePenLine,
   HardDrive,
   Link2,
+  ListChecks,
   Lock,
   Mic,
   MonitorUp,
   Pause,
   Play,
+  Radio,
   RefreshCcw,
   Save,
+  ShieldCheck,
   Square,
   Trash2,
   UploadCloud,
   Video,
+  X,
 } from 'lucide-react'
 import './App.css'
 import {
   createShare,
+  deleteRecording,
+  fetchAppConfig,
   fetchRecordings,
   fetchSharedRecording,
   requestShareAccess,
   revokeShare,
+  updateRecording,
   uploadRecording,
 } from './api'
-import type { Recording, ShareSettingsInput } from './types'
+import type { AppConfig, Recording, ShareSettingsInput } from './types'
 import type { RecorderStatus } from './types'
 import { useScreenRecorder } from './hooks/useScreenRecorder'
+
+type StudioStep = 'setup' | 'record' | 'review' | 'share' | 'library'
+
+const setupStorageKey = 'opencast.setup.v1'
 
 function App() {
   const shareToken = getShareToken()
@@ -48,6 +62,8 @@ function StudioApp() {
     status,
     micEnabled,
     cameraEnabled,
+    screenReady,
+    countdown,
     elapsedMs,
     durationMs,
     recordingBlob,
@@ -55,6 +71,9 @@ function StudioApp() {
     error,
     startRecording,
     stopRecording,
+    pauseRecording,
+    resumeRecording,
+    cancelRecording,
     resetRecording,
     toggleMic,
     toggleCamera,
@@ -62,6 +81,7 @@ function StudioApp() {
   const [recordings, setRecordings] = useState<Recording[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [title, setTitle] = useState(() => `Recording ${new Date().toLocaleDateString()}`)
+  const [selectedTitle, setSelectedTitle] = useState('')
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [sharePassword, setSharePassword] = useState('')
   const [passwordEnabled, setPasswordEnabled] = useState(false)
@@ -69,12 +89,56 @@ function StudioApp() {
   const [shareDownloadEnabled, setShareDownloadEnabled] = useState(true)
   const [shareStatus, setShareStatus] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [libraryError, setLibraryError] = useState<string | null>(null)
+  const [appConfig, setAppConfig] = useState<AppConfig | null>(null)
+  const [configError, setConfigError] = useState<string | null>(null)
+  const [setupComplete, setSetupComplete] = useState(() => {
+    try {
+      return window.localStorage.getItem(setupStorageKey) === 'complete'
+    } catch {
+      return false
+    }
+  })
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
 
+  const captureSupported = Boolean(navigator.mediaDevices?.getDisplayMedia)
+  const storageCompliant = appConfig?.dataRootCompliant !== false && !configError
   const selectedRecording = useMemo(
     () => recordings.find((recording) => recording.id === selectedId) ?? recordings[0] ?? null,
     [recordings, selectedId],
   )
+  const activeStep = useMemo<StudioStep>(() => {
+    if (!setupComplete) {
+      return 'setup'
+    }
+
+    if (status === 'ready') {
+      return 'review'
+    }
+
+    if (
+      status === 'requesting' ||
+      status === 'countdown' ||
+      status === 'recording' ||
+      status === 'paused' ||
+      status === 'stopping'
+    ) {
+      return 'record'
+    }
+
+    if (shareDialogOpen) {
+      return 'share'
+    }
+
+    if (selectedRecording) {
+      return 'library'
+    }
+
+    return 'record'
+  }, [selectedRecording, setupComplete, shareDialogOpen, status])
+  const nextAction = getNextAction(activeStep, status, selectedRecording)
 
   const applyShareDefaults = useCallback((recording: Recording | null) => {
     if (!recording) {
@@ -108,11 +172,37 @@ function StudioApp() {
       setRecordings(nextRecordings)
       setLibraryError(null)
       setSelectedId(nextSelectedId)
+      setSelectedTitle(nextSelectedRecording?.title ?? '')
       applyShareDefaults(nextSelectedRecording)
-    } catch (error) {
-      setLibraryError(error instanceof Error ? error.message : 'Could not load recordings')
+    } catch (caughtError) {
+      setLibraryError(caughtError instanceof Error ? caughtError.message : 'Could not load recordings')
     }
   }, [applyShareDefaults, selectedId])
+
+  useEffect(() => {
+    let isActive = true
+
+    fetchAppConfig()
+      .then((nextConfig) => {
+        if (!isActive) {
+          return
+        }
+
+        setAppConfig(nextConfig)
+        setConfigError(null)
+      })
+      .catch((caughtError: unknown) => {
+        if (!isActive) {
+          return
+        }
+
+        setConfigError(caughtError instanceof Error ? caughtError.message : 'Could not load config')
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [])
 
   useEffect(() => {
     let isActive = true
@@ -125,6 +215,7 @@ function StudioApp() {
 
         setRecordings(nextRecordings)
         setSelectedId(nextRecordings[0]?.id ?? null)
+        setSelectedTitle(nextRecordings[0]?.title ?? '')
         applyShareDefaults(nextRecordings[0] ?? null)
         setLibraryError(null)
       })
@@ -143,9 +234,53 @@ function StudioApp() {
     }
   }, [applyShareDefaults])
 
+  const completeSetup = useCallback(() => {
+    try {
+      window.localStorage.setItem(setupStorageKey, 'complete')
+    } catch {
+      // The setup state is a convenience preference; the studio still works without storage.
+    }
+
+    setSetupComplete(true)
+  }, [])
+
+  const handleSelectRecording = useCallback(
+    (recording: Recording) => {
+      setSelectedId(recording.id)
+      setSelectedTitle(recording.title)
+      applyShareDefaults(recording)
+      setShareDialogOpen(false)
+    },
+    [applyShareDefaults],
+  )
+
   const handleStart = useCallback(() => {
+    if (recordingBlob && !window.confirm('Discard the unsaved recording draft?')) {
+      return
+    }
+
+    if (recordingBlob) {
+      resetRecording()
+    }
+
     void startRecording()
-  }, [startRecording])
+  }, [recordingBlob, resetRecording, startRecording])
+
+  const handleCancel = useCallback(() => {
+    if (!window.confirm('Stop and discard this capture?')) {
+      return
+    }
+
+    cancelRecording()
+  }, [cancelRecording])
+
+  const handleDiscardDraft = useCallback(() => {
+    if (!window.confirm('Discard this recording draft?')) {
+      return
+    }
+
+    resetRecording()
+  }, [resetRecording])
 
   const handleSave = useCallback(async () => {
     if (!recordingBlob) {
@@ -162,13 +297,52 @@ function StudioApp() {
       })
       await loadLibrary()
       setSelectedId(saved.id)
+      setSelectedTitle(saved.title)
       applyShareDefaults(saved)
       resetRecording()
-      setShareUrl(null)
+      setShareDialogOpen(true)
+      setShareStatus('Saved. Share link ready when you are.')
+      setTitle(`Recording ${new Date().toLocaleDateString()}`)
     } finally {
       setIsSaving(false)
     }
   }, [applyShareDefaults, durationMs, loadLibrary, recordingBlob, resetRecording, title])
+
+  const handleRename = useCallback(async () => {
+    if (!selectedRecording || !selectedTitle.trim()) {
+      return
+    }
+
+    setIsRenaming(true)
+
+    try {
+      const updated = await updateRecording(selectedRecording.id, selectedTitle)
+      await loadLibrary()
+      setSelectedId(updated.id)
+      setSelectedTitle(updated.title)
+      applyShareDefaults(updated)
+      setShareStatus('Recording renamed.')
+    } finally {
+      setIsRenaming(false)
+    }
+  }, [applyShareDefaults, loadLibrary, selectedRecording, selectedTitle])
+
+  const handleDelete = useCallback(async () => {
+    if (!selectedRecording || !window.confirm(`Delete "${selectedRecording.title}"?`)) {
+      return
+    }
+
+    setIsDeleting(true)
+
+    try {
+      await deleteRecording(selectedRecording.id)
+      setShareDialogOpen(false)
+      setShareUrl(null)
+      await loadLibrary()
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [loadLibrary, selectedRecording])
 
   const handleShare = useCallback(
     async (recording: Recording) => {
@@ -189,9 +363,12 @@ function StudioApp() {
       await loadLibrary()
       const nextUrl = shared.shareToken ? shareLink(shared.shareToken) : null
       applyShareDefaults(shared)
+      setSelectedId(shared.id)
+      setSelectedTitle(shared.title)
       setShareUrl(nextUrl)
       setSharePassword('')
-      setShareStatus(shared.shareToken ? 'Share settings saved.' : null)
+      setShareDialogOpen(true)
+      setShareStatus(shared.shareToken ? 'Share link copied.' : null)
 
       if (nextUrl) {
         await copyText(nextUrl)
@@ -218,6 +395,18 @@ function StudioApp() {
     [applyShareDefaults, loadLibrary],
   )
 
+  const setExpiryPreset = useCallback((preset: 'day' | 'week' | 'never') => {
+    if (preset === 'never') {
+      setShareExpiresAt('')
+      return
+    }
+
+    const hours = preset === 'day' ? 24 : 24 * 7
+    const date = new Date(Date.now() + hours * 60 * 60 * 1000)
+    const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+    setShareExpiresAt(offsetDate.toISOString().slice(0, 16))
+  }, [])
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -227,17 +416,50 @@ function StudioApp() {
           </span>
           <div>
             <h1>OpenCast</h1>
-            <p>Private recorder</p>
+            <p>Guided recorder</p>
           </div>
         </div>
-        <div className="storage-chip" title="Recording storage root">
-          <HardDrive size={16} />
-          <span>D:\open-source\opencast-data</span>
+        <div className="topbar-actions">
+          <StatusChip
+            tone={captureSupported ? 'good' : 'bad'}
+            icon={captureSupported ? <CheckCircle2 size={16} /> : <X size={16} />}
+            label={captureSupported ? 'Capture ready' : 'Capture blocked'}
+          />
+          <div className="storage-chip" title="Recording storage root">
+            <HardDrive size={16} />
+            <span>{appConfig?.dataRoot ?? 'D:\\open-source\\opencast-data'}</span>
+          </div>
         </div>
       </header>
 
       <section className="workspace">
+        <MissionRail
+          activeStep={activeStep}
+          appConfig={appConfig}
+          captureSupported={captureSupported}
+          nextAction={nextAction}
+          setupComplete={setupComplete}
+        />
+
         <section className="recorder-panel" aria-label="Recorder">
+          {!setupComplete ? (
+            <section className="setup-card" aria-label="Setup">
+              <div>
+                <h2>Ready Room</h2>
+                <p>{configError ?? 'D-drive storage, browser capture, private sharing.'}</p>
+              </div>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={completeSetup}
+                disabled={!captureSupported || !storageCompliant}
+              >
+                <Check size={18} />
+                Start
+              </button>
+            </section>
+          ) : null}
+
           <div className="panel-heading">
             <div>
               <h2>Recorder</h2>
@@ -251,72 +473,147 @@ function StudioApp() {
             {status === 'idle' && !previewUrl ? (
               <div className="stage-empty">
                 <MonitorUp size={36} strokeWidth={1.6} />
-                <span>Ready</span>
+                <span>Choose a screen or window</span>
+              </div>
+            ) : null}
+            {status === 'countdown' ? (
+              <div className="countdown-overlay" aria-live="polite">
+                <strong>{countdown}</strong>
+                <span>Recording starts</span>
+              </div>
+            ) : null}
+            {status === 'paused' ? (
+              <div className="pause-overlay" aria-live="polite">
+                <Pause size={24} />
+                <span>Paused</span>
               </div>
             ) : null}
             {previewUrl ? (
-              <video
-                className="playback-preview"
-                src={previewUrl}
-                controls
-                playsInline
-              />
+              <video className="playback-preview" src={previewUrl} controls playsInline />
             ) : null}
           </div>
 
           <div className="control-strip" aria-label="Recording controls">
             <ToggleButton
               active={micEnabled}
+              disabled={isCaptureActive(status)}
               icon={<Mic size={18} />}
               label="Mic"
               onClick={toggleMic}
             />
             <ToggleButton
               active={cameraEnabled}
+              disabled={isCaptureActive(status)}
               icon={<Camera size={18} />}
               label="Camera"
               onClick={toggleCamera}
             />
+            <div className={`source-pill ${screenReady ? 'ready' : ''}`}>
+              <Radio size={16} />
+              <span>{screenReady ? 'Source armed' : 'No source'}</span>
+            </div>
             <div className="elapsed" title="Elapsed time">
               <Clock size={16} />
               <span>{formatTime(elapsedMs)}</span>
             </div>
+
             {status === 'recording' ? (
-              <button className="danger-button" type="button" onClick={stopRecording}>
-                <Square size={17} fill="currentColor" />
-                Stop
+              <>
+                <button className="secondary-button" type="button" onClick={pauseRecording}>
+                  <Pause size={17} />
+                  Pause
+                </button>
+                <button className="danger-button" type="button" onClick={stopRecording}>
+                  <Square size={17} fill="currentColor" />
+                  Stop
+                </button>
+                <button className="danger-outline-button" type="button" onClick={handleCancel}>
+                  <Trash2 size={16} />
+                  Cancel
+                </button>
+              </>
+            ) : null}
+
+            {status === 'paused' ? (
+              <>
+                <button className="primary-button" type="button" onClick={resumeRecording}>
+                  <Play size={17} fill="currentColor" />
+                  Resume
+                </button>
+                <button className="danger-button" type="button" onClick={stopRecording}>
+                  <Square size={17} fill="currentColor" />
+                  Stop
+                </button>
+                <button className="danger-outline-button" type="button" onClick={handleCancel}>
+                  <Trash2 size={16} />
+                  Cancel
+                </button>
+              </>
+            ) : null}
+
+            {status === 'requesting' || status === 'countdown' || status === 'stopping' ? (
+              <button className="danger-outline-button" type="button" onClick={handleCancel}>
+                <X size={16} />
+                Cancel
               </button>
-            ) : (
+            ) : null}
+
+            {status === 'idle' || status === 'ready' || status === 'error' ? (
               <button
                 className="primary-button"
                 type="button"
                 onClick={handleStart}
-                disabled={status === 'requesting'}
+                disabled={!captureSupported}
               >
                 <MonitorUp size={18} />
                 Record
               </button>
-            )}
+            ) : null}
           </div>
 
-          <div className="save-row">
-            <label htmlFor="recording-title">Title</label>
-            <input
-              id="recording-title"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="Untitled recording"
-            />
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={handleSave}
-              disabled={!recordingBlob || isSaving}
-            >
-              {isSaving ? <UploadCloud size={17} /> : <Save size={17} />}
-              {isSaving ? 'Saving' : 'Save'}
-            </button>
-          </div>
+          {status === 'ready' ? (
+            <section className="review-card" aria-label="Review recording">
+              <div className="review-heading">
+                <span className="row-icon" aria-hidden="true">
+                  <FilePenLine size={17} />
+                </span>
+                <div>
+                  <h3>Review</h3>
+                  <p>{formatTime(durationMs ?? 0)} draft</p>
+                </div>
+              </div>
+              <div className="save-row">
+                <label htmlFor="recording-title">Title</label>
+                <input
+                  id="recording-title"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="Untitled recording"
+                />
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={handleSave}
+                  disabled={!recordingBlob || isSaving}
+                >
+                  {isSaving ? <UploadCloud size={17} /> : <Save size={17} />}
+                  {isSaving ? 'Saving' : 'Save'}
+                </button>
+              </div>
+              <div className="review-actions">
+                {previewUrl ? (
+                  <a className="secondary-link" href={previewUrl} download={`${normalizeFileName(title)}.webm`}>
+                    <Download size={16} />
+                    Download draft
+                  </a>
+                ) : null}
+                <button className="danger-outline-button compact" type="button" onClick={handleDiscardDraft}>
+                  <Trash2 size={16} />
+                  Discard
+                </button>
+              </div>
+            </section>
+          ) : null}
 
           {error ? <p className="inline-error">{error}</p> : null}
         </section>
@@ -340,10 +637,7 @@ function StudioApp() {
                 className={`recording-row ${recording.id === selectedRecording?.id ? 'selected' : ''}`}
                 key={recording.id}
                 type="button"
-                onClick={() => {
-                  setSelectedId(recording.id)
-                  applyShareDefaults(recording)
-                }}
+                onClick={() => handleSelectRecording(recording)}
               >
                 <span className="row-icon" aria-hidden="true">
                   <Play size={16} fill="currentColor" />
@@ -354,12 +648,15 @@ function StudioApp() {
                     {formatDate(recording.createdAt)} / {formatBytes(recording.sizeBytes)}
                   </small>
                 </span>
+                <span className={`row-status ${recording.shareToken ? 'shared' : ''}`}>
+                  {recording.shareToken ? 'Shared' : 'Private'}
+                </span>
               </button>
             ))}
 
             {!recordings.length ? (
               <div className="empty-library">
-                <Pause size={22} />
+                <ListChecks size={22} />
                 <span>No recordings yet</span>
               </div>
             ) : null}
@@ -379,110 +676,326 @@ function StudioApp() {
                   <strong>{selectedRecording.title}</strong>
                   <small>{formatTime(selectedRecording.durationMs ?? 0)}</small>
                 </div>
+                <StatusChip
+                  tone={selectedRecording.shareToken ? 'good' : 'neutral'}
+                  icon={selectedRecording.shareToken ? <Link2 size={15} /> : <Lock size={15} />}
+                  label={selectedRecording.shareToken ? 'Shared' : 'Private'}
+                />
+              </div>
+              <div className="rename-row">
+                <input
+                  aria-label="Recording title"
+                  value={selectedTitle}
+                  onChange={(event) => setSelectedTitle(event.target.value)}
+                />
                 <button
                   className="secondary-button compact"
                   type="button"
-                  onClick={() => void handleShare(selectedRecording)}
+                  onClick={handleRename}
+                  disabled={isRenaming || selectedTitle.trim() === selectedRecording.title}
                 >
-                  <Link2 size={16} />
-                  {selectedRecording.shareToken ? 'Update' : 'Share'}
+                  <Save size={16} />
+                  Rename
                 </button>
               </div>
-              <div className="share-controls" aria-label="Share settings">
-                <label className="check-row">
-                  <input
-                    checked={passwordEnabled}
-                    type="checkbox"
-                    onChange={(event) => setPasswordEnabled(event.target.checked)}
-                  />
-                  <Lock size={16} />
-                  Password
-                </label>
-                {passwordEnabled ? (
-                  <input
-                    aria-label="Share password"
-                    className="share-input"
-                    type="password"
-                    value={sharePassword}
-                    onChange={(event) => setSharePassword(event.target.value)}
-                    placeholder={
-                      selectedRecording.sharePasswordProtected ? 'Leave unchanged' : 'Set password'
-                    }
-                  />
-                ) : null}
-
-                <label className="field-row">
-                  <span>Expires</span>
-                  <input
-                    className="share-input"
-                    type="datetime-local"
-                    value={shareExpiresAt}
-                    onChange={(event) => setShareExpiresAt(event.target.value)}
-                  />
-                </label>
-
-                <label className="check-row">
-                  <input
-                    checked={shareDownloadEnabled}
-                    type="checkbox"
-                    onChange={(event) => setShareDownloadEnabled(event.target.checked)}
-                  />
+              <div className="viewer-actions">
+                <button
+                  className="primary-button compact"
+                  type="button"
+                  onClick={() => {
+                    applyShareDefaults(selectedRecording)
+                    setShareDialogOpen(true)
+                  }}
+                >
+                  <Link2 size={16} />
+                  Share
+                </button>
+                <a
+                  className="secondary-link compact"
+                  href={`/api/recordings/${selectedRecording.id}/video`}
+                  download
+                >
                   <Download size={16} />
-                  Downloads
-                </label>
-
-                <div className="share-actions">
-                  <button
-                    className="secondary-button compact"
-                    type="button"
-                    onClick={() => void handleShare(selectedRecording)}
-                  >
-                    <Link2 size={16} />
-                    {selectedRecording.shareToken ? 'Save link' : 'Create link'}
-                  </button>
-                  {selectedRecording.shareToken ? (
-                    <button
-                      className="danger-outline-button compact"
-                      type="button"
-                      onClick={() => void handleRevokeShare(selectedRecording)}
-                    >
-                      <Trash2 size={16} />
-                      Revoke
-                    </button>
-                  ) : null}
-                </div>
-
-                {selectedRecording.shareToken ? (
-                  <p className="share-meta-line">
-                    {selectedRecording.sharePasswordProtected ? 'Password protected' : 'Open link'} /
-                    {selectedRecording.shareDownloadEnabled ? ' downloads on' : ' downloads off'} /
-                    {selectedRecording.shareExpiresAt
-                      ? ` expires ${formatDate(selectedRecording.shareExpiresAt)}`
-                      : ' no expiry'}{' '}
-                    / {selectedRecording.viewCount} views
-                  </p>
-                ) : null}
+                  Download
+                </a>
+                <button
+                  className="danger-outline-button compact"
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                >
+                  <Trash2 size={16} />
+                  Delete
+                </button>
               </div>
-              {shareUrl ? (
-                <div className="share-box">
-                  <Check size={16} />
-                  <a href={shareUrl}>{shareUrl}</a>
-                  <button
-                    className="icon-button"
-                    type="button"
-                    title="Copy link"
-                    onClick={() => void copyText(shareUrl)}
-                  >
-                    <Copy size={16} />
-                  </button>
-                </div>
-              ) : null}
               {shareStatus ? <p className="share-status">{shareStatus}</p> : null}
             </section>
           ) : null}
         </aside>
       </section>
+
+      {shareDialogOpen && selectedRecording ? (
+        <ShareDialog
+          recording={selectedRecording}
+          shareUrl={shareUrl}
+          passwordEnabled={passwordEnabled}
+          password={sharePassword}
+          expiresAt={shareExpiresAt}
+          downloadEnabled={shareDownloadEnabled}
+          status={shareStatus}
+          onClose={() => setShareDialogOpen(false)}
+          onCopy={() => {
+            if (shareUrl) {
+              void copyText(shareUrl)
+              setShareStatus('Share link copied.')
+            }
+          }}
+          onPasswordEnabledChange={setPasswordEnabled}
+          onPasswordChange={setSharePassword}
+          onExpiresAtChange={setShareExpiresAt}
+          onDownloadEnabledChange={setShareDownloadEnabled}
+          onExpiryPreset={setExpiryPreset}
+          onSave={() => void handleShare(selectedRecording)}
+          onRevoke={() => void handleRevokeShare(selectedRecording)}
+        />
+      ) : null}
     </main>
+  )
+}
+
+function MissionRail({
+  activeStep,
+  appConfig,
+  captureSupported,
+  nextAction,
+  setupComplete,
+}: {
+  activeStep: StudioStep
+  appConfig: AppConfig | null
+  captureSupported: boolean
+  nextAction: string
+  setupComplete: boolean
+}) {
+  const steps: Array<{ id: StudioStep; label: string; icon: ReactNode; complete: boolean }> = [
+    {
+      id: 'setup',
+      label: 'Setup',
+      icon: <ShieldCheck size={17} />,
+      complete: setupComplete,
+    },
+    {
+      id: 'record',
+      label: 'Record',
+      icon: <MonitorUp size={17} />,
+      complete: false,
+    },
+    {
+      id: 'review',
+      label: 'Review',
+      icon: <FilePenLine size={17} />,
+      complete: false,
+    },
+    {
+      id: 'share',
+      label: 'Share',
+      icon: <Link2 size={17} />,
+      complete: false,
+    },
+    {
+      id: 'library',
+      label: 'Library',
+      icon: <ListChecks size={17} />,
+      complete: false,
+    },
+  ]
+
+  return (
+    <aside className="mission-rail" aria-label="Workflow">
+      <div className="mission-heading">
+        <span className="mission-mark" aria-hidden="true">
+          <Radio size={17} />
+        </span>
+        <div>
+          <h2>Path</h2>
+          <p>{nextAction}</p>
+        </div>
+      </div>
+      <ol className="step-list">
+        {steps.map((step) => (
+          <li className={step.id === activeStep ? 'active' : step.complete ? 'complete' : ''} key={step.id}>
+            <span aria-hidden="true">{step.complete ? <Check size={17} /> : step.icon}</span>
+            <strong>{step.label}</strong>
+          </li>
+        ))}
+      </ol>
+      <div className="readiness-card">
+        <StatusChip
+          tone={captureSupported ? 'good' : 'bad'}
+          icon={captureSupported ? <CheckCircle2 size={15} /> : <X size={15} />}
+          label={captureSupported ? 'Browser OK' : 'Browser blocked'}
+        />
+        <StatusChip
+          tone={appConfig?.dataRootCompliant === false ? 'bad' : 'good'}
+          icon={<HardDrive size={15} />}
+          label={appConfig?.requiredStorageDrive ?? 'D:'}
+        />
+      </div>
+    </aside>
+  )
+}
+
+function ShareDialog({
+  recording,
+  shareUrl,
+  passwordEnabled,
+  password,
+  expiresAt,
+  downloadEnabled,
+  status,
+  onClose,
+  onCopy,
+  onPasswordEnabledChange,
+  onPasswordChange,
+  onExpiresAtChange,
+  onDownloadEnabledChange,
+  onExpiryPreset,
+  onSave,
+  onRevoke,
+}: {
+  recording: Recording
+  shareUrl: string | null
+  passwordEnabled: boolean
+  password: string
+  expiresAt: string
+  downloadEnabled: boolean
+  status: string | null
+  onClose: () => void
+  onCopy: () => void
+  onPasswordEnabledChange: (value: boolean) => void
+  onPasswordChange: (value: string) => void
+  onExpiresAtChange: (value: string) => void
+  onDownloadEnabledChange: (value: boolean) => void
+  onExpiryPreset: (value: 'day' | 'week' | 'never') => void
+  onSave: () => void
+  onRevoke: () => void
+}) {
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section className="share-dialog" role="dialog" aria-modal="true" aria-label="Share recording">
+        <div className="dialog-heading">
+          <div>
+            <h2>Share</h2>
+            <p>{recording.title}</p>
+          </div>
+          <button className="icon-button" type="button" onClick={onClose} title="Close">
+            <X size={17} />
+          </button>
+        </div>
+
+        <div className="share-state">
+          <StatusChip
+            tone={recording.shareToken ? 'good' : 'neutral'}
+            icon={recording.shareToken ? <Link2 size={15} /> : <Lock size={15} />}
+            label={recording.shareToken ? 'Link active' : 'Private'}
+          />
+          <StatusChip
+            tone={recording.sharePasswordProtected ? 'good' : 'neutral'}
+            icon={recording.sharePasswordProtected ? <ShieldCheck size={15} /> : <Lock size={15} />}
+            label={recording.sharePasswordProtected ? 'Password' : 'No password'}
+          />
+          <StatusChip
+            tone={recording.shareExpired ? 'bad' : 'neutral'}
+            icon={<Clock size={15} />}
+            label={recording.shareExpired ? 'Expired' : `${recording.viewCount} views`}
+          />
+        </div>
+
+        <div className="share-controls" aria-label="Share settings">
+          <label className="check-row">
+            <input
+              checked={passwordEnabled}
+              type="checkbox"
+              onChange={(event) => onPasswordEnabledChange(event.target.checked)}
+            />
+            <Lock size={16} />
+            Password
+          </label>
+          {passwordEnabled ? (
+            <input
+              aria-label="Share password"
+              className="share-input"
+              type="password"
+              value={password}
+              onChange={(event) => onPasswordChange(event.target.value)}
+              placeholder={recording.sharePasswordProtected ? 'Leave unchanged' : 'Set password'}
+            />
+          ) : null}
+
+          <div className="preset-row" aria-label="Expiry presets">
+            <button className="secondary-button compact" type="button" onClick={() => onExpiryPreset('day')}>
+              24h
+            </button>
+            <button className="secondary-button compact" type="button" onClick={() => onExpiryPreset('week')}>
+              7d
+            </button>
+            <button className="secondary-button compact" type="button" onClick={() => onExpiryPreset('never')}>
+              Never
+            </button>
+          </div>
+
+          <label className="field-row">
+            <span>Expires</span>
+            <input
+              className="share-input"
+              type="datetime-local"
+              value={expiresAt}
+              onChange={(event) => onExpiresAtChange(event.target.value)}
+            />
+          </label>
+
+          <label className="check-row">
+            <input
+              checked={downloadEnabled}
+              type="checkbox"
+              onChange={(event) => onDownloadEnabledChange(event.target.checked)}
+            />
+            <Download size={16} />
+            Downloads
+          </label>
+        </div>
+
+        {shareUrl ? (
+          <div className="share-box">
+            <Check size={16} />
+            <a href={shareUrl}>{shareUrl}</a>
+            <button className="icon-button" type="button" title="Copy link" onClick={onCopy}>
+              <Copy size={16} />
+            </button>
+          </div>
+        ) : null}
+
+        <div className="dialog-actions">
+          <button className="primary-button" type="button" onClick={onSave}>
+            <Link2 size={16} />
+            {recording.shareToken ? 'Save link' : 'Create link'}
+          </button>
+          {shareUrl ? (
+            <a className="secondary-link" href={shareUrl} target="_blank" rel="noreferrer">
+              <Eye size={16} />
+              View as guest
+            </a>
+          ) : null}
+          {recording.shareToken ? (
+            <button className="danger-outline-button" type="button" onClick={onRevoke}>
+              <Trash2 size={16} />
+              Revoke
+            </button>
+          ) : null}
+        </div>
+
+        {status ? <p className="share-status">{status}</p> : null}
+      </section>
+    </div>
   )
 }
 
@@ -600,11 +1113,13 @@ function ShareView({ token }: { token: string }) {
 
 function ToggleButton({
   active,
+  disabled,
   icon,
   label,
   onClick,
 }: {
   active: boolean
+  disabled?: boolean
   icon: ReactNode
   label: string
   onClick: () => void
@@ -614,12 +1129,30 @@ function ToggleButton({
       className={`toggle-button ${active ? 'active' : ''}`}
       type="button"
       aria-pressed={active}
+      disabled={disabled}
       onClick={onClick}
       title={label}
     >
       {icon}
       {label}
     </button>
+  )
+}
+
+function StatusChip({
+  icon,
+  label,
+  tone,
+}: {
+  icon: ReactNode
+  label: string
+  tone: 'good' | 'bad' | 'neutral'
+}) {
+  return (
+    <span className={`status-chip ${tone}`}>
+      {icon}
+      {label}
+    </span>
   )
 }
 
@@ -630,15 +1163,45 @@ function getShareToken() {
 
 function statusLabel(status: RecorderStatus) {
   const labels = {
-    idle: 'Idle',
+    idle: 'Ready',
     requesting: 'Opening capture picker',
+    countdown: 'Countdown',
     recording: 'Recording',
+    paused: 'Paused',
     stopping: 'Finishing recording',
-    ready: 'Ready to save',
+    ready: 'Ready to review',
     error: 'Needs attention',
   }
 
   return labels[status]
+}
+
+function isCaptureActive(status: RecorderStatus) {
+  return status === 'requesting' || status === 'countdown' || status === 'recording' || status === 'paused'
+}
+
+function getNextAction(activeStep: StudioStep, status: RecorderStatus, selectedRecording: Recording | null) {
+  if (activeStep === 'setup') {
+    return 'Confirm launch'
+  }
+
+  if (activeStep === 'review') {
+    return 'Save or discard'
+  }
+
+  if (activeStep === 'share') {
+    return 'Lock the link'
+  }
+
+  if (status === 'recording') {
+    return 'Capture running'
+  }
+
+  if (selectedRecording) {
+    return 'Manage library'
+  }
+
+  return 'Start recording'
 }
 
 async function copyText(value: string) {
@@ -746,6 +1309,17 @@ function formatTime(value: number) {
   const seconds = totalSeconds % 60
 
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+function normalizeFileName(value: string) {
+  return (
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 48) || 'recording'
+  )
 }
 
 export default App
