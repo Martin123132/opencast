@@ -11,6 +11,10 @@ jobs:
     runs-on: windows-latest
     env:
       OPENCAST_DATA_ROOT: D:\open-source\opencast-data
+      OPENCAST_E2E_DATA_ROOT: D:\open-source\opencast-e2e-data
+      OPENCAST_E2E_ARTIFACTS: D:\open-source\.temp\opencast-e2e
+      PLAYWRIGHT_BROWSERS_PATH: D:\open-source\.cache\playwright
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
       npm_config_cache: D:\open-source\.cache\npm
       TEMP: D:\open-source\.temp
       TMP: D:\open-source\.temp
@@ -24,6 +28,16 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Prepare D-drive workspace
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path `
+            "D:\open-source\.cache\npm", `
+            "D:\open-source\.cache\playwright", `
+            "D:\open-source\.temp", `
+            "D:\open-source\opencast-data", `
+            "D:\open-source\opencast-e2e-data"
+
       - name: Install
         run: npm ci
 
@@ -35,3 +49,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Browser E2E
+        run: npm run test:e2e

@@ -12,9 +12,11 @@
     "dev": "concurrently -k -n api,web -c cyan,green \"npm:dev:api\" \"npm:dev:web\"",
     "dev:api": "tsx server/index.ts",
     "dev:web": "vite --host 127.0.0.1",
+    "dev:e2e": "concurrently -k -n api,web -c cyan,green \"npm.cmd run dev:api\" \"npm.cmd run dev:web -- --port 5181 --strictPort\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "tsx --test tests/config.test.ts",
+    "test:e2e": "playwright test",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -30,6 +32,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.61.0",
     "@types/node": "^24.12.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

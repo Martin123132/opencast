@@ -46,5 +46,15 @@ The API listens on `http://127.0.0.1:4174`. Vite starts on the first available l
 
 ```powershell
 npm.cmd run lint
+npm.cmd run test
 npm.cmd run build
+npm.cmd run test:e2e
+```
+
+The browser E2E suite runs Edge against isolated local ports and writes its reports,
+screenshots, traces, and test data under D-drive paths:
+
+```text
+D:\open-source\.temp\opencast-e2e
+D:\open-source\opencast-e2e-data
 ```
