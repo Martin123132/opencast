@@ -90,8 +90,23 @@ test('keeps the guided path usable on a mobile viewport', async ({ page, request
   await mobileFixtureRow.scrollIntoViewIfNeeded()
   await expect(mobileFixtureRow).toBeVisible()
   await expect(page.getByText('1 saved')).toBeVisible()
+  await expectNoHorizontalOverflow(page)
 
-  await saveSmokeScreenshot(page, 'mobile-layout.png')
+  const mobileShareButton = page.getByRole('button', { name: 'Share' })
+  await mobileShareButton.scrollIntoViewIfNeeded()
+  await expect(mobileShareButton).toBeVisible()
+  await mobileShareButton.click()
+
+  const mobileShareDialog = page.getByRole('dialog', { name: 'Share recording' })
+  await expect(mobileShareDialog).toBeVisible()
+  await expect(mobileShareDialog.getByText('Private')).toBeVisible()
+  await mobileShareDialog.getByRole('button', { name: 'Create link' }).click()
+  await expect(mobileShareDialog.getByText('/s/')).toBeVisible()
+  await expect(mobileShareDialog.getByRole('button', { name: 'Copy link' })).toBeVisible()
+  await expect(mobileShareDialog.getByRole('link', { name: 'View as guest' })).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+
+  await saveSmokeScreenshot(page, 'mobile-share-modal.png')
   expect(consoleMessages()).toEqual([])
 })
 
