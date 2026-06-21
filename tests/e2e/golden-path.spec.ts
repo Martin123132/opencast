@@ -103,10 +103,23 @@ test('keeps the guided path usable on a mobile viewport', async ({ page, request
   await mobileShareDialog.getByRole('button', { name: 'Create link' }).click()
   await expect(mobileShareDialog.getByText('/s/')).toBeVisible()
   await expect(mobileShareDialog.getByRole('button', { name: 'Copy link' })).toBeVisible()
-  await expect(mobileShareDialog.getByRole('link', { name: 'View as guest' })).toBeVisible()
+  const guestLink = mobileShareDialog.getByRole('link', { name: 'View as guest' })
+  await expect(guestLink).toBeVisible()
+  const guestHref = await guestLink.getAttribute('href')
+  expect(guestHref).toContain('/s/')
   await expectNoHorizontalOverflow(page)
 
   await saveSmokeScreenshot(page, 'mobile-share-modal.png')
+
+  await page.goto(guestHref!)
+  await expect(page.getByRole('heading', { name: 'OpenCast' })).toBeVisible()
+  await expect(page.getByText('Shared recording')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Mobile fixture' })).toBeVisible()
+  await expect(page.locator('video.shared-video')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Download' })).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+
+  await saveSmokeScreenshot(page, 'mobile-guest-share.png')
   expect(consoleMessages()).toEqual([])
 })
 
