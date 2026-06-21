@@ -1,6 +1,6 @@
-# OpenCast Roadmap
+# ShareFrame Roadmap
 
-OpenCast aims to be a local-first, open-source screen recorder and private sharing tool that feels guided, fast, and forgiving.
+ShareFrame aims to be a local-first, open-source screen recorder and private sharing tool that feels guided, fast, and forgiving.
 
 ## Product Loop
 

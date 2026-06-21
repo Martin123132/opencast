@@ -415,7 +415,7 @@ function StudioApp() {
             <Video size={18} strokeWidth={2.4} />
           </span>
           <div>
-            <h1>OpenCast</h1>
+            <h1>ShareFrame</h1>
             <p>Guided recorder</p>
           </div>
         </div>
@@ -1057,7 +1057,7 @@ function ShareView({ token }: { token: string }) {
             <Video size={18} strokeWidth={2.4} />
           </span>
           <div>
-            <h1>OpenCast</h1>
+            <h1>ShareFrame</h1>
             <p>Shared recording</p>
           </div>
         </div>

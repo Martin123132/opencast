@@ -1,6 +1,6 @@
-# OpenCast
+# ShareFrame
 
-OpenCast is a local-first screen recorder and private sharing prototype. It records in the browser, stores uploads on a D-drive data root, and serves private share links from a local Fastify API.
+ShareFrame is a local-first screen recorder and private sharing prototype. It records in the browser, stores uploads on a D-drive data root, and serves private share links from a local Fastify API.
 
 ## Current MVP
 

@@ -17,8 +17,8 @@ test('loads config and advances from setup into the recorder path', async ({ pag
   const consoleMessages = collectConsoleIssues(page)
 
   await page.goto('/')
-  await expect(page).toHaveTitle(/OpenCast/)
-  await expect(page.getByRole('heading', { name: 'OpenCast' })).toBeVisible()
+  await expect(page).toHaveTitle(/ShareFrame/)
+  await expect(page.getByRole('heading', { name: 'ShareFrame' })).toBeVisible()
   await expect(page.getByText('Capture ready')).toBeVisible()
   await expect(page.getByText('D:\\open-source\\opencast-e2e-data')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Ready Room' })).toBeVisible()
@@ -75,7 +75,7 @@ test('keeps the guided path usable on a mobile viewport', async ({ page, request
   await createRecording(request, 'Mobile fixture')
 
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'OpenCast' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'ShareFrame' })).toBeVisible()
   await expect(page.getByLabel('Workflow').getByText('Browser OK')).toBeVisible()
   await expect(page.getByLabel('Workflow').getByText('D:')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Ready Room' })).toBeVisible()
@@ -112,7 +112,7 @@ test('keeps the guided path usable on a mobile viewport', async ({ page, request
   await saveSmokeScreenshot(page, 'mobile-share-modal.png')
 
   await page.goto(guestHref!)
-  await expect(page.getByRole('heading', { name: 'OpenCast' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'ShareFrame' })).toBeVisible()
   await expect(page.getByText('Shared recording')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Mobile fixture' })).toBeVisible()
   await expect(page.locator('video.shared-video')).toBeVisible()
