@@ -69,6 +69,32 @@ test('shows library recordings, validates rename, and opens the share modal', as
   expect(consoleMessages()).toEqual([])
 })
 
+test('keeps the guided path usable on a mobile viewport', async ({ page, request }) => {
+  const consoleMessages = collectConsoleIssues(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await createRecording(request, 'Mobile fixture')
+
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'OpenCast' })).toBeVisible()
+  await expect(page.getByLabel('Workflow').getByText('Browser OK')).toBeVisible()
+  await expect(page.getByLabel('Workflow').getByText('D:')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Ready Room' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Start' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Ready Room' })).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Record' })).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+
+  const mobileFixtureRow = page.getByRole('button', { name: /Mobile fixture/ })
+  await mobileFixtureRow.scrollIntoViewIfNeeded()
+  await expect(mobileFixtureRow).toBeVisible()
+  await expect(page.getByText('1 saved')).toBeVisible()
+
+  await saveSmokeScreenshot(page, 'mobile-layout.png')
+  expect(consoleMessages()).toEqual([])
+})
+
 async function resetE2eData() {
   await rm(e2eDataRoot, { force: true, recursive: true })
   await mkdir(e2eDataRoot, { recursive: true })
@@ -125,4 +151,16 @@ function collectConsoleIssues(page: Page) {
 async function saveSmokeScreenshot(page: Page, name: string) {
   await mkdir(screenshotRoot, { recursive: true })
   await page.screenshot({ path: path.join(screenshotRoot, name), fullPage: false })
+}
+
+async function expectNoHorizontalOverflow(page: Page) {
+  const dimensions = await page.evaluate(() => ({
+    bodyScrollWidth: document.body.scrollWidth,
+    documentScrollWidth: document.documentElement.scrollWidth,
+    viewportWidth: window.innerWidth,
+  }))
+
+  expect(Math.max(dimensions.bodyScrollWidth, dimensions.documentScrollWidth)).toBeLessThanOrEqual(
+    dimensions.viewportWidth + 1,
+  )
 }
