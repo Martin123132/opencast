@@ -936,8 +936,20 @@ a:focus-visible {
 
 .preset-row,
 .dialog-actions,
-.share-state {
+.share-state,
+.share-settings-preview {
   flex-wrap: wrap;
+}
+
+.share-settings-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
 }
 
 .check-row,

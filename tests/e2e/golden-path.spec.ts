@@ -272,6 +272,55 @@ test('shows library recordings, validates rename, and opens the share modal', as
   expect(consoleMessages()).toEqual([])
 })
 
+test('applies password expiry and playback-only share settings for guests', async ({
+  page,
+  request,
+}) => {
+  const consoleMessages = collectConsoleIssues(page)
+  await createRecording(request, 'Protected share fixture')
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Start' }).click()
+
+  const selected = page.getByLabel('Selected recording')
+  await selected.getByRole('button', { name: 'Share' }).click()
+
+  const shareDialog = page.getByRole('dialog', { name: 'Share recording' })
+  await expect(shareDialog).toBeVisible()
+  await expect(shareDialog.getByLabel('Share settings summary').getByText('No password')).toBeVisible()
+  await expect(shareDialog.getByLabel('Share settings summary').getByText('No expiry')).toBeVisible()
+  await expect(shareDialog.getByLabel('Share settings summary').getByText('Downloads allowed')).toBeVisible()
+
+  await shareDialog.getByLabel('Require password').check()
+  await shareDialog.getByLabel('Share password').fill('secret-pass')
+  await shareDialog.getByRole('button', { name: '24h' }).click()
+  await shareDialog.getByLabel('Allow downloads').uncheck()
+
+  await expect(shareDialog.getByLabel('Share settings summary').getByText('Password required')).toBeVisible()
+  await expect(shareDialog.getByLabel('Share settings summary').getByText(/Expires/)).toBeVisible()
+  await expect(shareDialog.getByLabel('Share settings summary').getByText('Playback only')).toBeVisible()
+
+  await shareDialog.getByRole('button', { name: 'Create link' }).click()
+  await expect(shareDialog.getByText('Share link active')).toBeVisible()
+  await expect(shareDialog.locator('.share-state').getByText('Password')).toBeVisible()
+
+  const guestHref = await shareDialog.getByRole('link', { name: 'View as guest' }).getAttribute('href')
+  expect(guestHref).toContain('/s/')
+
+  await page.goto(guestHref!)
+  await expect(page.getByRole('heading', { name: 'ShareFrame' })).toBeVisible()
+  await expect(page.getByLabel('Password')).toBeVisible()
+  await page.getByLabel('Password').fill('secret-pass')
+  await page.getByRole('button', { name: 'Unlock' }).click()
+
+  await expect(page.locator('video.shared-video')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Protected share fixture' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Download' })).toBeHidden()
+
+  await saveSmokeScreenshot(page, 'protected-share-playback-only.png')
+  expect(consoleMessages()).toEqual([])
+})
+
 test('revokes a shared link, blocks old guest links, and recreates', async ({ page, request }) => {
   const recording = await createRecording(request, 'Revoke lifecycle fixture')
 

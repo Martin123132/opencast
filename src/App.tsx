@@ -1297,6 +1297,13 @@ function ShareDialog({
   })()
 
   const shouldShowShareLink = hasActiveShare
+  const pendingPasswordLabel = passwordEnabled
+    ? recording.sharePasswordProtected && !password.trim()
+      ? 'Password unchanged'
+      : 'Password required'
+    : 'No password'
+  const pendingExpiryLabel = formatShareExpirySummary(expiresAt)
+  const pendingDownloadLabel = downloadEnabled ? 'Downloads allowed' : 'Playback only'
 
   return (
     <div className="modal-backdrop" role="presentation">
@@ -1343,7 +1350,7 @@ function ShareDialog({
               onChange={(event) => onPasswordEnabledChange(event.target.checked)}
             />
             <Lock size={16} />
-            Password
+            Require password
           </label>
           {passwordEnabled ? (
             <input
@@ -1371,6 +1378,7 @@ function ShareDialog({
           <label className="field-row">
             <span>Expires</span>
             <input
+              aria-label="Share expiry"
               className="share-input"
               type="datetime-local"
               value={expiresAt}
@@ -1385,8 +1393,26 @@ function ShareDialog({
               onChange={(event) => onDownloadEnabledChange(event.target.checked)}
             />
             <Download size={16} />
-            Downloads
+            Allow downloads
           </label>
+        </div>
+
+        <div className="share-settings-preview" aria-label="Share settings summary">
+          <StatusChip
+            tone={passwordEnabled ? 'good' : 'neutral'}
+            icon={passwordEnabled ? <ShieldCheck size={15} /> : <Lock size={15} />}
+            label={pendingPasswordLabel}
+          />
+          <StatusChip
+            tone={expiresAt ? 'good' : 'neutral'}
+            icon={<Clock size={15} />}
+            label={pendingExpiryLabel}
+          />
+          <StatusChip
+            tone={downloadEnabled ? 'good' : 'neutral'}
+            icon={<Download size={15} />}
+            label={pendingDownloadLabel}
+          />
         </div>
 
         {shouldShowShareLink && shareUrl ? (
@@ -1763,6 +1789,26 @@ function toDatetimeLocal(value: string | null) {
 
   const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
   return offsetDate.toISOString().slice(0, 16)
+}
+
+function formatShareExpirySummary(value: string) {
+  if (!value) {
+    return 'No expiry'
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Expiry set'
+  }
+
+  return `Expires ${date.toLocaleDateString([], {
+    month: 'short',
+    day: 'numeric',
+  })} ${date.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  })}`
 }
 
 function fromDatetimeLocal(value: string) {
