@@ -171,17 +171,21 @@ test('shows library recordings, validates rename, and opens the share modal', as
   await page.goto('/')
   await page.getByRole('button', { name: 'Start' }).click()
 
+  const selected = page.getByLabel('Selected recording')
   await expect(page.getByRole('button', { name: /Golden path fixture/ })).toBeVisible()
   await expect(page.getByText('1 saved')).toBeVisible()
-  await expect(page.getByRole('textbox', { name: 'Recording title' })).toHaveValue(
+  await expect(selected.getByRole('textbox', { name: 'Recording title' })).toHaveValue(
     'Golden path fixture',
   )
-  await expect(page.getByRole('button', { name: 'Rename' })).toBeDisabled()
+  await expect(selected.getByRole('button', { name: 'Rename' })).toBeDisabled()
 
-  await page.getByRole('textbox', { name: 'Recording title' }).fill('Golden path fixture renamed')
-  await expect(page.getByRole('button', { name: 'Rename' })).toBeEnabled()
-  await page.getByRole('button', { name: 'Rename' }).click()
-  await expect(page.getByRole('button', { name: /Golden path fixture renamed/ })).toBeVisible()
+  const renamedTitle = 'Golden path fixture renamed'
+  const titleInput = selected.getByRole('textbox', { name: 'Recording title' })
+  await titleInput.fill(renamedTitle)
+  await expect(selected.getByRole('button', { name: 'Rename' })).toBeEnabled()
+  await titleInput.press('Enter')
+  await expect(page.getByRole('button', { name: renamedTitle })).toBeVisible()
+  await expect(selected.getByRole('button', { name: 'Rename' })).toBeDisabled()
 
   await page.getByRole('button', { name: 'Share' }).click()
   const shareDialog = page.getByRole('dialog', { name: 'Share recording' })
@@ -193,6 +197,42 @@ test('shows library recordings, validates rename, and opens the share modal', as
 
   await saveSmokeScreenshot(page, 'share-modal.png')
   expect(recording.id).toBeTruthy()
+  expect(consoleMessages()).toEqual([])
+})
+
+test('confirms delete explicitly and keeps keyboard rename flow for library recording', async ({ page, request }) => {
+  const consoleMessages = collectConsoleIssues(page)
+
+  await createRecording(request, 'Delete fixture')
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Start' }).click()
+
+  const selected = page.getByLabel('Selected recording')
+  const titleInput = selected.getByRole('textbox', { name: 'Recording title' })
+  const renameButton = selected.getByRole('button', { name: 'Rename' })
+  const deleteButton = selected.getByRole('button', { name: 'Delete' })
+  const keepButton = selected.getByRole('button', { name: 'Keep' })
+
+  await expect(titleInput).toHaveValue('Delete fixture')
+  await titleInput.fill('Delete fixture renamed')
+  await expect(renameButton).toBeEnabled()
+  await titleInput.press('Enter')
+  await expect(page.getByRole('button', { name: 'Delete fixture renamed' })).toBeVisible()
+
+  await deleteButton.click()
+  await expect(selected.getByText('Delete this recording permanently?')).toBeVisible()
+  await expect(keepButton).toBeVisible()
+  await keepButton.click()
+  await expect(selected.getByRole('button', { name: 'Delete' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Delete fixture renamed/ })).toBeVisible()
+
+  await selected.getByRole('button', { name: 'Delete' }).click()
+  await selected.getByRole('button', { name: 'Confirm delete' }).click()
+  await expect(page.getByText('No recordings yet')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Record first take' })).toBeVisible()
+
+  await saveSmokeScreenshot(page, 'library-delete-confirmation.png')
   expect(consoleMessages()).toEqual([])
 })
 

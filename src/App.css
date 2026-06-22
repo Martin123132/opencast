@@ -800,6 +800,13 @@ a:focus-visible {
   margin-top: 10px;
 }
 
+.delete-warning {
+  width: 100%;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .library-video {
   aspect-ratio: 16 / 9;
   border-radius: 8px;

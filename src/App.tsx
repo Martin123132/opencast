@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
 import {
   Camera,
   Check,
@@ -91,6 +100,7 @@ function StudioApp() {
   const [isSaving, setIsSaving] = useState(false)
   const [isRenaming, setIsRenaming] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [libraryError, setLibraryError] = useState<string | null>(null)
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null)
   const [configError, setConfigError] = useState<string | null>(null)
@@ -210,6 +220,7 @@ function StudioApp() {
       setLibraryError(null)
       setSelectedId(nextSelectedId)
       setSelectedTitle(nextSelectedRecording?.title ?? '')
+      setDeleteTargetId(null)
       applyShareDefaults(nextSelectedRecording)
     } catch (caughtError) {
       setLibraryError(caughtError instanceof Error ? caughtError.message : 'Could not load recordings')
@@ -253,6 +264,7 @@ function StudioApp() {
         setRecordings(nextRecordings)
         setSelectedId(nextRecordings[0]?.id ?? null)
         setSelectedTitle(nextRecordings[0]?.title ?? '')
+        setDeleteTargetId(null)
         applyShareDefaults(nextRecordings[0] ?? null)
         setLibraryError(null)
       })
@@ -285,6 +297,7 @@ function StudioApp() {
     (recording: Recording) => {
       setSelectedId(recording.id)
       setSelectedTitle(recording.title)
+      setDeleteTargetId(null)
       applyShareDefaults(recording)
       setShareDialogOpen(false)
     },
@@ -366,14 +379,16 @@ function StudioApp() {
   }, [applyShareDefaults, durationMs, loadLibrary, recordingBlob, resetRecording, title])
 
   const handleRename = useCallback(async () => {
-    if (!selectedRecording || !selectedTitle.trim()) {
+    const nextTitle = selectedTitle.trim()
+
+    if (!selectedRecording || !nextTitle || nextTitle === selectedRecording.title) {
       return
     }
 
     setIsRenaming(true)
 
     try {
-      const updated = await updateRecording(selectedRecording.id, selectedTitle)
+      const updated = await updateRecording(selectedRecording.id, nextTitle)
       await loadLibrary()
       setSelectedId(updated.id)
       setSelectedTitle(updated.title)
@@ -384,22 +399,56 @@ function StudioApp() {
     }
   }, [applyShareDefaults, loadLibrary, selectedRecording, selectedTitle])
 
+  const handleRenameKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter') {
+        event.preventDefault()
+
+        if (!isRenaming && selectedRecording && selectedTitle.trim() !== selectedRecording.title) {
+          void handleRename()
+        }
+
+        return
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setSelectedTitle(selectedRecording?.title ?? '')
+        setDeleteTargetId(null)
+        event.currentTarget.blur()
+      }
+    },
+    [handleRename, isRenaming, selectedRecording, selectedTitle],
+  )
+
+  const handleRequestDelete = useCallback(() => {
+    if (!selectedRecording) {
+      return
+    }
+
+    setDeleteTargetId(selectedRecording.id)
+  }, [selectedRecording])
+
   const handleDelete = useCallback(async () => {
-    if (!selectedRecording || !window.confirm(`Delete "${selectedRecording.title}"?`)) {
+    if (!deleteTargetId) {
       return
     }
 
     setIsDeleting(true)
 
     try {
-      await deleteRecording(selectedRecording.id)
-      setShareDialogOpen(false)
-      setShareUrl(null)
+      await deleteRecording(deleteTargetId)
+      if (selectedId === deleteTargetId) {
+        setShareDialogOpen(false)
+        setShareUrl(null)
+      }
+
+      setDeleteTargetId(null)
       await loadLibrary()
     } finally {
       setIsDeleting(false)
     }
-  }, [loadLibrary, selectedRecording])
+  }, [deleteTargetId, loadLibrary, selectedId])
 
   const handleShare = useCallback(
     async (recording: Recording) => {
@@ -777,12 +826,13 @@ function StudioApp() {
                   aria-label="Recording title"
                   value={selectedTitle}
                   onChange={(event) => setSelectedTitle(event.target.value)}
+                  onKeyDown={handleRenameKeyDown}
                 />
                 <button
                   className="secondary-button compact"
                   type="button"
                   onClick={handleRename}
-                  disabled={isRenaming || selectedTitle.trim() === selectedRecording.title}
+                  disabled={isRenaming || selectedTitle.trim() === selectedRecording?.title || !selectedTitle.trim()}
                 >
                   <Save size={16} />
                   Rename
@@ -808,15 +858,38 @@ function StudioApp() {
                   <Download size={16} />
                   Download
                 </a>
-                <button
-                  className="danger-outline-button compact"
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                >
-                  <Trash2 size={16} />
-                  Delete
-                </button>
+                {deleteTargetId === selectedRecording.id ? (
+                  <>
+                    <span className="delete-warning">Delete this recording permanently?</span>
+                    <button
+                      className="secondary-button compact"
+                      type="button"
+                      onClick={() => setDeleteTargetId(null)}
+                      disabled={isDeleting}
+                    >
+                      Keep
+                    </button>
+                    <button
+                      className="danger-outline-button compact"
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                    >
+                      <Trash2 size={16} />
+                      {isDeleting ? 'Removing' : 'Confirm delete'}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="danger-outline-button compact"
+                    type="button"
+                    onClick={handleRequestDelete}
+                    disabled={isDeleting}
+                  >
+                    <Trash2 size={16} />
+                    Delete
+                  </button>
+                )}
               </div>
               {shareStatus ? <p className="share-status">{shareStatus}</p> : null}
             </section>
