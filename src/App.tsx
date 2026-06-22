@@ -776,6 +776,7 @@ function MissionRail({
   nextAction: string
   setupComplete: boolean
 }) {
+  const stepGuidance = getStepGuidance(activeStep)
   const steps: Array<{ id: StudioStep; label: string; icon: ReactNode; complete: boolean }> = [
     {
       id: 'setup',
@@ -828,6 +829,11 @@ function MissionRail({
           </li>
         ))}
       </ol>
+      <section className="guide-card" aria-label="Current guidance">
+        <span>{stepGuidance.kicker}</span>
+        <strong>{stepGuidance.title}</strong>
+        <p>{stepGuidance.body}</p>
+      </section>
       <div className="readiness-card">
         <StatusChip
           tone={captureSupported ? 'good' : 'bad'}
@@ -1202,6 +1208,38 @@ function getNextAction(activeStep: StudioStep, status: RecorderStatus, selectedR
   }
 
   return 'Start recording'
+}
+
+function getStepGuidance(activeStep: StudioStep) {
+  const guidance: Record<StudioStep, { kicker: string; title: string; body: string }> = {
+    setup: {
+      kicker: 'Step 1',
+      title: 'Confirm the room',
+      body: 'Check browser capture and D-drive storage before opening the recorder.',
+    },
+    record: {
+      kicker: 'Step 2',
+      title: 'Choose what to capture',
+      body: 'Pick a screen or window, then use the focused controls to record only what matters.',
+    },
+    review: {
+      kicker: 'Step 3',
+      title: 'Name the take',
+      body: 'Preview the draft, give it a clear title, and save it into the local library.',
+    },
+    share: {
+      kicker: 'Step 4',
+      title: 'Lock the link',
+      body: 'Create a private guest link, then choose password, expiry, and download access.',
+    },
+    library: {
+      kicker: 'Step 5',
+      title: 'Manage the archive',
+      body: 'Rename, download, delete, or reopen sharing for anything stored locally.',
+    },
+  }
+
+  return guidance[activeStep]
 }
 
 async function copyText(value: string) {

@@ -210,6 +210,37 @@
   border-top: 1px solid var(--border);
 }
 
+.guide-card {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.guide-card span {
+  color: var(--accent-ink);
+  font-size: 11px;
+  font-weight: 780;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.guide-card strong {
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.guide-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .status-chip {
   min-height: 30px;
   display: inline-flex;

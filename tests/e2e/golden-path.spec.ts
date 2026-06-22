@@ -22,12 +22,14 @@ test('loads config and advances from setup into the recorder path', async ({ pag
   await expect(page.getByText('Capture ready')).toBeVisible()
   await expect(page.getByText('D:\\open-source\\opencast-e2e-data')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Ready Room' })).toBeVisible()
+  await expect(page.getByLabel('Current guidance').getByText('Confirm the room')).toBeVisible()
 
   await page.getByRole('button', { name: 'Start' }).click()
 
   await expect(page.getByRole('heading', { name: 'Ready Room' })).toBeHidden()
   await expect(page.getByRole('button', { name: 'Record' })).toBeVisible()
   await expect(page.getByText('Start recording')).toBeVisible()
+  await expect(page.getByLabel('Current guidance').getByText('Choose what to capture')).toBeVisible()
   await expect(page.getByText('No recordings yet')).toBeVisible()
 
   await saveSmokeScreenshot(page, 'setup-transition.png')
@@ -79,11 +81,13 @@ test('keeps the guided path usable on a mobile viewport', async ({ page, request
   await expect(page.getByLabel('Workflow').getByText('Browser OK')).toBeVisible()
   await expect(page.getByLabel('Workflow').getByText('D:')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Ready Room' })).toBeVisible()
+  await expect(page.getByLabel('Current guidance').getByText('Confirm the room')).toBeVisible()
 
   await page.getByRole('button', { name: 'Start' }).click()
 
   await expect(page.getByRole('heading', { name: 'Ready Room' })).toBeHidden()
   await expect(page.getByRole('button', { name: 'Record' })).toBeVisible()
+  await expect(page.getByLabel('Current guidance').getByText('Manage the archive')).toBeVisible()
   await expectNoHorizontalOverflow(page)
 
   const mobileFixtureRow = page.getByRole('button', { name: /Mobile fixture/ })
