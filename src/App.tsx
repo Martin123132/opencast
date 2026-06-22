@@ -168,14 +168,14 @@ function StudioApp() {
     }
 
     if (hasReviewDraft) {
-      return 'Save first take'
+      return 'Save this draft'
     }
 
     return 'Record first take'
   })()
   const isFirstRunActionDisabled =
     setupComplete && !hasReviewDraft && status !== 'idle' && status !== 'error'
-  const nextAction = getNextAction(activeStep, status, selectedRecording)
+  const nextAction = getNextAction(activeStep, status, selectedRecording, hasReviewDraft)
 
   const applyShareDefaults = useCallback((recording: Recording | null) => {
     if (!recording) {
@@ -873,7 +873,8 @@ function MissionRail({
   nextAction: string
   setupComplete: boolean
 }) {
-  const stepGuidance = getStepGuidance(activeStep)
+  const isReviewDraft = activeStep === 'review'
+  const stepGuidance = getStepGuidance(activeStep, isReviewDraft)
   const steps: Array<{ id: StudioStep; label: string; icon: ReactNode; complete: boolean }> = [
     {
       id: 'setup',
@@ -1283,12 +1284,21 @@ function isCaptureActive(status: RecorderStatus) {
   return status === 'requesting' || status === 'countdown' || status === 'recording' || status === 'paused'
 }
 
-function getNextAction(activeStep: StudioStep, status: RecorderStatus, selectedRecording: Recording | null) {
+function getNextAction(
+  activeStep: StudioStep,
+  status: RecorderStatus,
+  selectedRecording: Recording | null,
+  hasReviewDraft: boolean,
+) {
   if (activeStep === 'setup') {
     return 'Confirm launch'
   }
 
   if (activeStep === 'review') {
+    if (hasReviewDraft && status === 'ready') {
+      return 'Save this draft'
+    }
+
     return 'Save or discard'
   }
 
@@ -1307,7 +1317,7 @@ function getNextAction(activeStep: StudioStep, status: RecorderStatus, selectedR
   return 'Start recording'
 }
 
-function getStepGuidance(activeStep: StudioStep) {
+function getStepGuidance(activeStep: StudioStep, hasReviewDraft: boolean) {
   const guidance: Record<StudioStep, { kicker: string; title: string; body: string }> = {
     setup: {
       kicker: 'Step 1',
@@ -1321,8 +1331,10 @@ function getStepGuidance(activeStep: StudioStep) {
     },
     review: {
       kicker: 'Step 3',
-      title: 'Name the take',
-      body: 'Preview the draft, give it a clear title, and save it into the local library.',
+      title: hasReviewDraft ? 'Save this draft' : 'Name the take',
+      body: hasReviewDraft
+        ? 'Give it a title and save it to lock the clip in your library.'
+        : 'Preview the draft, give it a clear title, and save it into the local library.',
     },
     share: {
       kicker: 'Step 4',

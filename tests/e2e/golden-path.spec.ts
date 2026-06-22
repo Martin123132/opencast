@@ -8,6 +8,51 @@ const screenshotRoot = path.join(
   'screenshots',
 )
 
+async function installRecorderStub(page: Page) {
+  await page.addInitScript(() => {
+    const mediaDevices = window.navigator.mediaDevices as
+      & MediaDevices
+      & {
+        getDisplayMedia: (...args: unknown[]) => Promise<MediaStream>
+        getUserMedia: (...args: unknown[]) => Promise<MediaStream>
+      }
+
+    const createDisplayStream = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 640
+      canvas.height = 360
+      const context = canvas.getContext('2d')
+      const captureStream = canvas.captureStream(30)
+      const tracks = captureStream.getVideoTracks()
+      const stream = new MediaStream()
+
+      for (const track of tracks) {
+        stream.addTrack(track)
+      }
+
+      let tick = 0
+
+      const render = () => {
+        if (context) {
+          context.fillStyle = `hsl(${tick % 360}, 75%, 12%)`
+          context.fillRect(0, 0, canvas.width, canvas.height)
+          context.fillStyle = 'rgba(255, 255, 255, 0.9)'
+          context.fillText(`${tick}`, 24, 40)
+          tick += 1
+        }
+
+        window.requestAnimationFrame(render)
+      }
+
+      render()
+      return stream
+    }
+
+    mediaDevices.getDisplayMedia = async () => createDisplayStream()
+    mediaDevices.getUserMedia = async () => new MediaStream()
+  })
+}
+
 test.beforeEach(async ({ request }) => {
   await resetE2eData()
   await deleteRecordings(request)
@@ -60,16 +105,51 @@ test('guides first-run onboarding from setup to first saved recording and share'
   ).toBeHidden()
 
   const selected = page.getByLabel('Selected recording')
+  const shareDialog = page.getByRole('dialog', { name: 'Share recording' })
   await expect(selected).toBeVisible()
   await selected.getByRole('button', { name: 'Share' }).click()
-
-  const shareDialog = page.getByRole('dialog', { name: 'Share recording' })
   await expect(shareDialog).toBeVisible()
   await expect(shareDialog.getByText('Private')).toBeVisible()
   await shareDialog.getByRole('button', { name: 'Create link' }).click()
   await expect(shareDialog.getByText('/s/')).toBeVisible()
 
   await saveSmokeScreenshot(page, 'first-run-share-flow.png')
+  expect(consoleMessages()).toEqual([])
+})
+
+test('guides first-run from record draft to save then share', async ({ page }) => {
+  const consoleMessages = collectConsoleIssues(page)
+  await installRecorderStub(page)
+
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Ready Room' })).toBeVisible()
+  await page.getByRole('button', { name: 'Start' }).click()
+
+  await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Record', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible()
+  await page.getByRole('button', { name: 'Stop' }).click()
+  await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()
+  await expect(page.getByLabel('Current guidance').getByText('Save this draft')).toBeVisible()
+
+  const draftTitle = 'Unsaved flow draft'
+  await page.getByRole('textbox', { name: 'Title' }).fill(draftTitle)
+  await page.getByLabel('Review recording').getByRole('button', { name: 'Save' }).click()
+
+  const shareDialog = page.getByRole('dialog', { name: 'Share recording' })
+  await expect(shareDialog).toBeVisible()
+  await expect(shareDialog.getByText('Saved. Share link ready when you are.')).toBeVisible()
+  await expect(page.getByText('No recordings yet')).toBeHidden()
+  await expect(page.getByLabel('Current guidance').getByText('Lock the link')).toBeVisible()
+  await expect(page.getByRole('button', { name: draftTitle })).toBeVisible()
+
+  const selected = page.getByLabel('Selected recording')
+  await expect(selected).toBeVisible()
+  await expect(shareDialog.getByText('Private')).toBeVisible()
+  await shareDialog.getByRole('button', { name: 'Create link' }).click()
+  await expect(shareDialog.getByText('/s/')).toBeVisible()
+
+  await saveSmokeScreenshot(page, 'first-run-record-draft-to-share.png')
   expect(consoleMessages()).toEqual([])
 })
 
