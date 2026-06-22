@@ -223,13 +223,25 @@ test('revokes a shared link, blocks old guest links, and recreates', async ({ pa
   await expect(shareDialog.getByText('This share link was revoked.')).toBeVisible()
   await expect(shareDialog.getByRole('link', { name: 'View as guest' })).toBeHidden()
 
+  const revokedListResponse = await request.get('/api/recordings')
+  const revokedList = (await revokedListResponse.json()) as {
+    recordings: Array<{ id: string; shareWasRevoked: boolean; shareToken: string | null }>
+  }
+  const revokedRecording = revokedList.recordings.find((item) => item.id === recording.id)
+  expect(revokedRecording?.shareWasRevoked).toBe(true)
+  expect(revokedRecording?.shareToken).toBeNull()
+
   await page.goto(guestHref!)
   await expect(page.getByText('This share link is unavailable.')).toBeVisible()
 
   await page.goto('/')
+  await page.reload()
+  await expect(selected.getByText('Revoked')).toBeVisible()
   await expect(selected.getByRole('button', { name: 'Share' })).toBeVisible()
-  await expect(selected.getByRole('button', { name: 'Unshare' })).toBeHidden()
+
   await selected.getByRole('button', { name: 'Share' }).click()
+  await expect(shareDialog.getByText('Share link revoked')).toBeVisible()
+  await expect(shareDialog.getByText('This share link was revoked.')).toBeVisible()
   await expect(shareDialog.getByRole('button', { name: 'Recreate link' })).toBeVisible()
   await shareDialog.getByRole('button', { name: 'Recreate link' }).click()
   await expect(shareDialog.getByText('/s/')).toBeVisible()
@@ -238,8 +250,27 @@ test('revokes a shared link, blocks old guest links, and recreates', async ({ pa
   expect(recreatedHref).toBeTruthy()
   expect(recreatedHref).not.toBe(guestHref)
 
-  await shareDialog.getByRole('button', { name: 'Close share dialog' }).click()
-  await expect(shareDialog).toBeHidden()
+  const recreatedListResponse = await request.get('/api/recordings')
+  const recreatedList = (await recreatedListResponse.json()) as {
+    recordings: Array<{ id: string; shareWasRevoked: boolean; shareToken: string | null }>
+  }
+  const recreatedRecording = recreatedList.recordings.find((item) => item.id === recording.id)
+  expect(recreatedRecording?.shareWasRevoked).toBe(false)
+  expect(recreatedRecording?.shareToken).toBeTruthy()
+
+  await page.goto(guestHref!)
+  await expect(page.getByText('This share link is unavailable.')).toBeVisible()
+  await page.goto(recreatedHref!)
+  await expect(page.locator('.shared-video')).toBeVisible()
+  await expect(page.getByText('This share link is unavailable.')).toBeHidden()
+  await expect(page.getByText('This share link is no longer available.')).toBeHidden()
+
+  await page.goto('/')
+  const shareDialogVisible = await shareDialog.isVisible().catch(() => false)
+  if (shareDialogVisible) {
+    await shareDialog.getByRole('button', { name: 'Close share dialog' }).click()
+    await expect(shareDialog).toBeHidden()
+  }
   await expect(selected.getByRole('button', { name: 'Unshare' })).toBeVisible()
   await selected.getByRole('button', { name: 'Unshare' }).click()
   await expect(page.getByText('Share link revoked.')).toBeVisible()
