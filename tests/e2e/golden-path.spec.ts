@@ -229,8 +229,23 @@ test('confirms delete explicitly and keeps keyboard rename flow for library reco
 
   await selected.getByRole('button', { name: 'Delete' }).click()
   await selected.getByRole('button', { name: 'Confirm delete' }).click()
+  const undoButton = page.getByRole('button', { name: 'Undo' })
+  await expect(undoButton).toBeVisible()
+  await expect(undoButton).toBeEnabled()
+
+  await undoButton.click()
+  await expect(page.getByText('No recordings yet')).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Delete fixture renamed' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Undo' })).toBeHidden()
+  await expect(selected.getByRole('button', { name: 'Delete' })).toBeVisible()
+
+  await selected.getByRole('button', { name: 'Delete' }).click()
+  await selected.getByRole('button', { name: 'Confirm delete' }).click()
+  await expect(undoButton).toBeVisible()
+  await page.waitForTimeout(4200)
   await expect(page.getByText('No recordings yet')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Record first take' })).toBeVisible()
+  await expect(undoButton).toBeHidden()
 
   await saveSmokeScreenshot(page, 'library-delete-confirmation.png')
   expect(consoleMessages()).toEqual([])

@@ -53,7 +53,13 @@ import { useScreenRecorder } from './hooks/useScreenRecorder'
 
 type StudioStep = 'setup' | 'record' | 'review' | 'share' | 'library'
 
+type PendingDelete = {
+  recording: Recording
+  timerId: ReturnType<typeof setTimeout>
+}
+
 const setupStorageKey = 'opencast.setup.v1'
+const undoDeleteWindowMs = 4000
 
 function App() {
   const shareToken = getShareToken()
@@ -101,6 +107,7 @@ function StudioApp() {
   const [isRenaming, setIsRenaming] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [libraryError, setLibraryError] = useState<string | null>(null)
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null)
   const [configError, setConfigError] = useState<string | null>(null)
@@ -221,6 +228,7 @@ function StudioApp() {
       setSelectedId(nextSelectedId)
       setSelectedTitle(nextSelectedRecording?.title ?? '')
       setDeleteTargetId(null)
+      setPendingDelete(null)
       applyShareDefaults(nextSelectedRecording)
     } catch (caughtError) {
       setLibraryError(caughtError instanceof Error ? caughtError.message : 'Could not load recordings')
@@ -265,6 +273,7 @@ function StudioApp() {
         setSelectedId(nextRecordings[0]?.id ?? null)
         setSelectedTitle(nextRecordings[0]?.title ?? '')
         setDeleteTargetId(null)
+        setPendingDelete(null)
         applyShareDefaults(nextRecordings[0] ?? null)
         setLibraryError(null)
       })
@@ -421,34 +430,148 @@ function StudioApp() {
     [handleRename, isRenaming, selectedRecording, selectedTitle],
   )
 
+  const clearPendingDelete = useCallback(() => {
+    setPendingDelete((nextDelete) => {
+      if (nextDelete) {
+        clearTimeout(nextDelete.timerId)
+      }
+
+      return null
+    })
+  }, [])
+
   const handleRequestDelete = useCallback(() => {
     if (!selectedRecording) {
       return
     }
 
+    clearPendingDelete()
     setDeleteTargetId(selectedRecording.id)
-  }, [selectedRecording])
+  }, [clearPendingDelete, selectedRecording])
 
-  const handleDelete = useCallback(async () => {
-    if (!deleteTargetId) {
+  const clearDeleteState = useCallback(() => {
+    setDeleteTargetId(null)
+    setIsDeleting(false)
+  }, [])
+
+  const finalizeDelete = useCallback(
+    async (recordingId: string, timeoutRecording: Recording | null) => {
+      setIsDeleting(true)
+
+      try {
+        await deleteRecording(recordingId)
+        clearDeleteState()
+
+        setPendingDelete((nextDelete) => {
+          if (nextDelete?.recording.id === recordingId) {
+            return null
+          }
+
+          return nextDelete
+        })
+
+        if (timeoutRecording) {
+          setShareStatus(`"${timeoutRecording.title}" removed.`)
+        } else {
+          setShareStatus('Recording removed.')
+        }
+
+        await loadLibrary()
+      } catch (caughtError) {
+        setLibraryError(caughtError instanceof Error ? caughtError.message : 'Could not remove recording')
+        await loadLibrary()
+      } finally {
+        setIsDeleting(false)
+      }
+    },
+    [clearDeleteState, loadLibrary],
+  )
+
+  const handleDelete = useCallback(() => {
+    if (!deleteTargetId || !selectedRecording) {
       return
     }
 
-    setIsDeleting(true)
+    const targetRecording = selectedRecording.id === deleteTargetId ? selectedRecording : null
+    const target = targetRecording ?? recordings.find((recording) => recording.id === deleteTargetId)
+    if (!target) {
+      clearPendingDelete()
+      setDeleteTargetId(null)
+      return
+    }
 
-    try {
-      await deleteRecording(deleteTargetId)
-      if (selectedId === deleteTargetId) {
-        setShareDialogOpen(false)
-        setShareUrl(null)
+    clearPendingDelete()
+    const timerId = setTimeout(() => {
+      void finalizeDelete(target.id, target)
+    }, undoDeleteWindowMs)
+
+    setPendingDelete({ recording: target, timerId })
+    setDeleteTargetId(null)
+    if (selectedId === target.id) {
+      setShareDialogOpen(false)
+      setShareUrl(null)
+    }
+
+    setRecordings((nextRecordings) => {
+      const withoutDeleted = nextRecordings.filter((recording) => recording.id !== target.id)
+      const nextSelection =
+        selectedId === target.id ? withoutDeleted[0] ?? null : nextRecordings.find((recording) => recording.id === selectedId)
+      const nextSelectedRecording = nextSelection ?? withoutDeleted[0] ?? null
+
+      setSelectedId(nextSelectedRecording?.id ?? null)
+      setSelectedTitle(nextSelectedRecording?.title ?? '')
+      applyShareDefaults(nextSelectedRecording)
+      setShareUrl(null)
+
+      return withoutDeleted
+    })
+
+    setShareStatus(`"${target.title}" deleted. Restore it with Undo.`)
+  }, [
+    deleteTargetId,
+    clearPendingDelete,
+    finalizeDelete,
+    recordings,
+    selectedId,
+    applyShareDefaults,
+    selectedRecording,
+  ])
+
+  const handleUndoDelete = useCallback(() => {
+    if (!pendingDelete) {
+      return
+    }
+
+    clearPendingDelete()
+    const restored = pendingDelete.recording
+
+    setRecordings((nextRecordings) => {
+      if (nextRecordings.some((recording) => recording.id === restored.id)) {
+        return nextRecordings
       }
 
-      setDeleteTargetId(null)
-      await loadLibrary()
-    } finally {
-      setIsDeleting(false)
+      const restoredRecordings = [...nextRecordings, restored].toSorted((left, right) =>
+        right.createdAt.localeCompare(left.createdAt),
+      )
+
+      setSelectedId(restored.id)
+      setSelectedTitle(restored.title)
+      applyShareDefaults(restored)
+
+      return restoredRecordings
+    })
+
+    setShareStatus(`"${restored.title}" restored.`)
+  }, [applyShareDefaults, clearPendingDelete, pendingDelete])
+
+  useEffect(() => {
+    if (!pendingDelete) {
+      return
     }
-  }, [deleteTargetId, loadLibrary, selectedId])
+    return () => {
+      clearTimeout(pendingDelete.timerId)
+    }
+  }, [pendingDelete])
 
   const handleShare = useCallback(
     async (recording: Recording) => {
@@ -740,6 +863,21 @@ function StudioApp() {
           </div>
 
           {libraryError ? <p className="inline-error">{libraryError}</p> : null}
+
+          {pendingDelete ? (
+            <div className="undo-banner" aria-live="polite">
+              <span>{`"${pendingDelete.recording.title}" deleted.`}</span>
+              <button
+                className="secondary-button compact"
+                type="button"
+                onClick={handleUndoDelete}
+                disabled={isDeleting}
+              >
+                Undo
+              </button>
+              <span>{`Remove finalizes in ${Math.round(undoDeleteWindowMs / 1000)} seconds.`}</span>
+            </div>
+          ) : null}
 
           <div className="recording-list">
             {recordings.map((recording) => (
