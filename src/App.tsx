@@ -575,11 +575,14 @@ function StudioApp() {
 
   const handleShare = useCallback(
     async (recording: Recording) => {
+      const shouldUnexpire = recording.shareExpired && shareExpiresAt === toDatetimeLocal(recording.shareExpiresAt)
+      const nextExpiresAt = shouldUnexpire ? '' : shareExpiresAt
+
       const settings = buildShareSettings({
         passwordEnabled,
         password: sharePassword,
         recording,
-        expiresAt: shareExpiresAt,
+        expiresAt: nextExpiresAt,
         downloadEnabled: shareDownloadEnabled,
       })
 
@@ -1205,8 +1208,33 @@ function ShareDialog({
   onSave: () => void
   onRevoke: () => void
 }) {
-  const hasLink = Boolean(recording.shareToken || shareUrl)
-  const linkActionLabel = recording.shareToken || shareUrl ? 'Update link' : 'Create link'
+  const hasActiveShare = Boolean(recording.shareToken && !recording.shareExpired)
+  const hasAnyShareLink = Boolean(recording.shareToken || shareUrl)
+  const linkActionLabel = recording.shareExpired ? 'Recreate link' : hasAnyShareLink ? 'Update link' : 'Create link'
+  const canShareActions = hasActiveShare
+  const shareLinkLabel = recording.shareExpired
+    ? 'Share link expired'
+    : hasActiveShare
+      ? 'Share link active'
+      : 'No shared link yet'
+  const shareLinkTone: 'good' | 'bad' | 'neutral' = recording.shareExpired
+    ? 'bad'
+    : hasAnyShareLink
+      ? 'good'
+      : 'neutral'
+  const safeStateHint = (() => {
+    if (recording.shareExpired) {
+      return 'This share link expired. Recreate it to generate a fresh public URL.'
+    }
+
+    if (hasActiveShare) {
+      return 'Public link is ready. Copy to share or revoke when needed.'
+    }
+
+    return 'No active public link. Create one from this recording.'
+  })()
+
+  const shouldShowShareLink = hasActiveShare
 
   return (
     <div className="modal-backdrop" role="presentation">
@@ -1229,9 +1257,9 @@ function ShareDialog({
 
         <div className="share-state">
           <StatusChip
-            tone={hasLink ? 'good' : 'neutral'}
+            tone={shareLinkTone}
             icon={recording.shareToken ? <Link2 size={15} /> : <Lock size={15} />}
-            label={hasLink ? 'Share link active' : 'No shared link yet'}
+            label={shareLinkLabel}
           />
           <StatusChip
             tone={recording.sharePasswordProtected ? 'good' : 'neutral'}
@@ -1299,7 +1327,7 @@ function ShareDialog({
           </label>
         </div>
 
-        {shareUrl ? (
+        {shouldShowShareLink && shareUrl ? (
           <div className="share-box">
             <strong className="share-link-label">Guest link</strong>
             <div className="share-link-row">
@@ -1319,8 +1347,8 @@ function ShareDialog({
             <Link2 size={16} />
             {linkActionLabel}
           </button>
-          {shareUrl ? (
-            <a className="secondary-link" href={shareUrl} target="_blank" rel="noreferrer">
+          {canShareActions ? (
+            <a className="secondary-link" href={shareUrl ?? ''} target="_blank" rel="noreferrer">
               <Eye size={16} />
               View as guest
             </a>
@@ -1333,6 +1361,7 @@ function ShareDialog({
           ) : null}
         </div>
 
+        <p className="share-status">{safeStateHint}</p>
         {status ? <p className="share-status">{status}</p> : null}
       </section>
     </div>
