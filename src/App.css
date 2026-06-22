@@ -531,6 +531,11 @@ button {
   background: var(--danger);
 }
 
+.danger-button.compact {
+  min-height: 36px;
+  padding: 0 12px;
+}
+
 .toggle-button {
   padding: 0 12px;
 }
@@ -638,6 +643,31 @@ a:focus-visible {
 
 .review-actions {
   flex-wrap: wrap;
+}
+
+.draft-state,
+.draft-confirmation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.draft-confirmation {
+  flex: 1 1 280px;
+  justify-content: flex-end;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid rgba(218, 64, 39, 0.28);
+  border-radius: 8px;
+  color: var(--danger);
+  background: rgba(218, 64, 39, 0.06);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.draft-confirmation span {
+  margin-right: auto;
 }
 
 .save-row label {

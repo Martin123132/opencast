@@ -106,6 +106,7 @@ function StudioApp() {
   const [isSaving, setIsSaving] = useState(false)
   const [isRenaming, setIsRenaming] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [draftDiscardArmed, setDraftDiscardArmed] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [libraryError, setLibraryError] = useState<string | null>(null)
@@ -319,6 +320,7 @@ function StudioApp() {
     }
 
     if (recordingBlob) {
+      setDraftDiscardArmed(false)
       resetRecording()
     }
 
@@ -354,18 +356,21 @@ function StudioApp() {
   }, [cancelRecording])
 
   const handleDiscardDraft = useCallback(() => {
-    if (!window.confirm('Discard this recording draft?')) {
+    if (!draftDiscardArmed) {
+      setDraftDiscardArmed(true)
       return
     }
 
+    setDraftDiscardArmed(false)
     resetRecording()
-  }, [resetRecording])
+  }, [draftDiscardArmed, resetRecording])
 
   const handleSave = useCallback(async () => {
     if (!recordingBlob) {
       return
     }
 
+    setDraftDiscardArmed(false)
     setIsSaving(true)
 
     try {
@@ -827,6 +832,11 @@ function StudioApp() {
                   <p>{formatTime(durationMs ?? 0)} draft</p>
                 </div>
               </div>
+              <div className="draft-state" aria-label="Draft status">
+                <StatusChip icon={<Lock size={15} />} label="Unsaved local draft" tone="neutral" />
+                <StatusChip icon={<Clock size={15} />} label={`${formatTime(durationMs ?? 0)} captured`} tone="neutral" />
+                <StatusChip icon={<Link2 size={15} />} label="Save to share" tone="neutral" />
+              </div>
               <div className="save-row">
                 <label htmlFor="recording-title">Title</label>
                 <input
@@ -853,10 +863,26 @@ function StudioApp() {
                     Download draft
                   </a>
                 ) : null}
-                <button className="danger-outline-button compact" type="button" onClick={handleDiscardDraft}>
-                  <Trash2 size={16} />
-                  Discard
-                </button>
+                {draftDiscardArmed ? (
+                  <div className="draft-confirmation" role="status">
+                    <span>Discard this draft?</span>
+                    <button
+                      className="secondary-button compact"
+                      type="button"
+                      onClick={() => setDraftDiscardArmed(false)}
+                    >
+                      Keep draft
+                    </button>
+                    <button className="danger-button compact" type="button" onClick={handleDiscardDraft}>
+                      Confirm discard
+                    </button>
+                  </div>
+                ) : (
+                  <button className="danger-outline-button compact" type="button" onClick={handleDiscardDraft}>
+                    <Trash2 size={16} />
+                    Discard
+                  </button>
+                )}
               </div>
             </section>
           ) : null}

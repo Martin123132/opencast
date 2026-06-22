@@ -132,6 +132,9 @@ test('guides first-run from record draft to save then share', async ({ page }) =
   await page.getByRole('button', { name: 'Stop' }).click()
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()
   await expect(page.getByLabel('Current guidance').getByText('Save this draft')).toBeVisible()
+  const draftStatus = page.getByLabel('Draft status')
+  await expect(draftStatus.getByText('Unsaved local draft')).toBeVisible()
+  await expect(draftStatus.getByText('Save to share')).toBeVisible()
 
   const draftTitle = 'Unsaved flow draft'
   await page.getByRole('textbox', { name: 'Title' }).fill(draftTitle)
@@ -159,6 +162,37 @@ test('guides first-run from record draft to save then share', async ({ page }) =
   await expect(page.getByRole('button', { name: draftTitle })).toBeVisible()
 
   await saveSmokeScreenshot(page, 'first-run-record-draft-to-share.png')
+  expect(consoleMessages()).toEqual([])
+})
+
+test('confirms draft discard inline and leaves the library empty', async ({ page }) => {
+  const consoleMessages = collectConsoleIssues(page)
+  await installRecorderStub(page)
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Start' }).click()
+  await page.getByRole('button', { name: 'Record', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible()
+  await page.getByRole('button', { name: 'Stop' }).click()
+
+  const reviewCard = page.getByLabel('Review recording')
+  await expect(reviewCard.getByRole('heading', { name: 'Review' })).toBeVisible()
+  await expect(reviewCard.getByText('Unsaved local draft')).toBeVisible()
+
+  await reviewCard.getByRole('button', { name: 'Discard' }).click()
+  await expect(reviewCard.getByText('Discard this draft?')).toBeVisible()
+  await expect(reviewCard.getByRole('button', { name: 'Keep draft' })).toBeVisible()
+  await reviewCard.getByRole('button', { name: 'Keep draft' }).click()
+  await expect(reviewCard.getByText('Discard this draft?')).toBeHidden()
+  await expect(reviewCard.getByRole('textbox', { name: 'Title' })).toBeVisible()
+
+  await reviewCard.getByRole('button', { name: 'Discard' }).click()
+  await reviewCard.getByRole('button', { name: 'Confirm discard' }).click()
+  await expect(page.getByRole('heading', { name: 'Review' })).toBeHidden()
+  await expect(page.getByText('No recordings yet')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Record first take' })).toBeVisible()
+
+  await saveSmokeScreenshot(page, 'review-discard-confirmation.png')
   expect(consoleMessages()).toEqual([])
 })
 
