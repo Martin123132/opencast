@@ -200,6 +200,67 @@ test('shows library recordings, validates rename, and opens the share modal', as
   expect(consoleMessages()).toEqual([])
 })
 
+test('revokes a shared link, blocks old guest links, and recreates', async ({ page, request }) => {
+  const recording = await createRecording(request, 'Revoke lifecycle fixture')
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Start' }).click()
+
+  const selected = page.getByLabel('Selected recording')
+  await selected.getByRole('button', { name: 'Share' }).click()
+
+  const shareDialog = page.getByRole('dialog', { name: 'Share recording' })
+  await expect(shareDialog).toBeVisible()
+  await shareDialog.getByRole('button', { name: 'Create link' }).click()
+  await expect(shareDialog.getByText('/s/')).toBeVisible()
+  const guestHref = await shareDialog.getByRole('link', { name: 'View as guest' }).getAttribute('href')
+  expect(guestHref).toContain('/s/')
+
+  await shareDialog.getByRole('button', { name: 'Revoke' }).click()
+  await expect(shareDialog.getByText('Share link revoked.')).toBeVisible()
+  await expect(shareDialog.getByText('No shared link yet')).toBeVisible()
+  await expect(shareDialog.getByRole('link', { name: 'View as guest' })).toBeHidden()
+
+  await page.goto(guestHref!)
+  await expect(page.getByText('Share not found')).toBeVisible()
+
+  await page.goto('/')
+  await expect(selected.getByRole('button', { name: 'Share' })).toBeVisible()
+  await expect(selected.getByRole('button', { name: 'Unshare' })).toBeHidden()
+  await selected.getByRole('button', { name: 'Share' }).click()
+  await expect(shareDialog.getByRole('button', { name: 'Create link' })).toBeVisible()
+  await shareDialog.getByRole('button', { name: 'Create link' }).click()
+  await expect(shareDialog.getByText('/s/')).toBeVisible()
+
+  const recreatedHref = await shareDialog.getByRole('link', { name: 'View as guest' }).getAttribute('href')
+  expect(recreatedHref).toBeTruthy()
+  expect(recreatedHref).not.toBe(guestHref)
+
+  await shareDialog.getByRole('button', { name: 'Close share dialog' }).click()
+  await expect(shareDialog).toBeHidden()
+  await expect(selected.getByRole('button', { name: 'Unshare' })).toBeVisible()
+  await selected.getByRole('button', { name: 'Unshare' }).click()
+  await expect(page.getByText('Share link revoked.')).toBeVisible()
+  await expect(selected.getByRole('button', { name: 'Unshare' })).toBeHidden()
+
+  await selected.getByRole('button', { name: 'Share' }).click()
+  await expect(shareDialog.getByRole('button', { name: 'Create link' })).toBeVisible()
+  await shareDialog.getByRole('button', { name: 'Create link' }).click()
+  await expect(shareDialog.getByText('/s/')).toBeVisible()
+
+  const reupdatedHref = await shareDialog.getByRole('link', { name: 'View as guest' }).getAttribute('href')
+
+  await shareDialog.getByRole('button', { name: 'Update link' }).click()
+  await expect(shareDialog.getByText('/s/')).toBeVisible()
+  const postUpdateHref = await shareDialog.getByRole('link', { name: 'View as guest' }).getAttribute('href')
+  expect(postUpdateHref).toBe(reupdatedHref)
+  await shareDialog.getByRole('button', { name: 'Close share dialog' }).click()
+  await expect(shareDialog).toBeHidden()
+
+  await saveSmokeScreenshot(page, 'share-revoke-lifecycle.png')
+  expect(recording.id).toBeTruthy()
+})
+
 test('confirms delete explicitly and keeps keyboard rename flow for library recording', async ({ page, request }) => {
   const consoleMessages = collectConsoleIssues(page)
 

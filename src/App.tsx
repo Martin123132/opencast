@@ -988,6 +988,16 @@ function StudioApp() {
                   <Link2 size={16} />
                   Share
                 </button>
+                {selectedRecording.shareToken ? (
+                  <button
+                    className="secondary-button compact"
+                    type="button"
+                    onClick={() => void handleRevokeShare(selectedRecording)}
+                  >
+                    <Lock size={16} />
+                    Unshare
+                  </button>
+                ) : null}
                 <a
                   className="secondary-link compact"
                   href={`/api/recordings/${selectedRecording.id}/video`}
