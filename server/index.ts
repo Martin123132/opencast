@@ -152,11 +152,11 @@ app.get('/api/shares/:token', async (request, reply) => {
   const recording = await getRecordingByShareToken(token)
 
   if (!recording) {
-    return reply.code(404).send({ error: 'Share not found' })
+    return shareNotAvailable(reply, 404)
   }
 
   if (isShareExpired(recording)) {
-    return reply.code(410).send({ error: 'Share link expired' })
+    return shareNotAvailable(reply, 410)
   }
 
   const accessToken = getAccessToken(request.query)
@@ -180,11 +180,11 @@ app.post('/api/shares/:token/access', async (request, reply) => {
   const recording = await getRecordingByShareToken(token)
 
   if (!recording) {
-    return reply.code(404).send({ error: 'Share not found' })
+    return shareNotAvailable(reply, 404)
   }
 
   if (isShareExpired(recording)) {
-    return reply.code(410).send({ error: 'Share link expired' })
+    return shareNotAvailable(reply, 410)
   }
 
   const body = request.body as { password?: string } | undefined
@@ -208,11 +208,11 @@ app.get('/api/shares/:token/video', async (request, reply) => {
   const recording = await getRecordingByShareToken(token)
 
   if (!recording) {
-    return reply.code(404).send({ error: 'Share not found' })
+    return shareNotAvailable(reply, 404)
   }
 
   if (isShareExpired(recording)) {
-    return reply.code(410).send({ error: 'Share link expired' })
+    return shareNotAvailable(reply, 410)
   }
 
   const hasAccess = await verifyShareAccessToken(recording, getAccessToken(request.query))
@@ -230,11 +230,11 @@ app.get('/api/shares/:token/download', async (request, reply) => {
   const recording = await getRecordingByShareToken(token)
 
   if (!recording) {
-    return reply.code(404).send({ error: 'Share not found' })
+    return shareNotAvailable(reply, 404)
   }
 
   if (isShareExpired(recording)) {
-    return reply.code(410).send({ error: 'Share link expired' })
+    return shareNotAvailable(reply, 410)
   }
 
   if (!recording.shareDownloadEnabled) {
@@ -301,6 +301,10 @@ async function sendVideo(
   }
 
   return response.send(video.stream(range.start, range.end))
+}
+
+function shareNotAvailable(reply: FastifyReply, statusCode: number) {
+  return reply.code(statusCode).send({ error: 'This share link is unavailable.' })
 }
 
 function parseRange(rangeHeader: string, size: number) {

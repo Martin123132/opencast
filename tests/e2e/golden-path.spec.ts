@@ -222,7 +222,7 @@ test('revokes a shared link, blocks old guest links, and recreates', async ({ pa
   await expect(shareDialog.getByRole('link', { name: 'View as guest' })).toBeHidden()
 
   await page.goto(guestHref!)
-  await expect(page.getByText('Share not found')).toBeVisible()
+  await expect(page.getByText('This share link is unavailable.')).toBeVisible()
 
   await page.goto('/')
   await expect(selected.getByRole('button', { name: 'Share' })).toBeVisible()
@@ -256,7 +256,13 @@ test('revokes a shared link, blocks old guest links, and recreates', async ({ pa
   expect(postUpdateHref).toBe(reupdatedHref)
   await shareDialog.getByRole('button', { name: 'Close share dialog' }).click()
   await expect(shareDialog).toBeHidden()
+  expect(postUpdateHref).toBeTruthy()
+  await page.goto(postUpdateHref!)
+  await expect(page.locator('.shared-video')).toBeVisible()
+  await expect(page.getByText('This share link is unavailable.')).toBeHidden()
+  await expect(page.getByText('This share link is no longer available.')).toBeHidden()
 
+  await page.goto('/')
   await saveSmokeScreenshot(page, 'share-revoke-lifecycle.png')
   expect(recording.id).toBeTruthy()
 })

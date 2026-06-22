@@ -1355,7 +1355,7 @@ function ShareView({ token }: { token: string }) {
         setError(null)
       })
       .catch((caughtError: unknown) => {
-        setError(caughtError instanceof Error ? caughtError.message : 'Share not found')
+        setError(normalizeShareAccessError(caughtError))
       })
   }, [accessToken, token])
 
@@ -1371,7 +1371,7 @@ function ShareView({ token }: { token: string }) {
         setRequiresPassword(false)
         setError(null)
       } catch (caughtError) {
-        setError(caughtError instanceof Error ? caughtError.message : 'Could not unlock share')
+        setError(normalizeShareAccessError(caughtError, 'Could not unlock share'))
       } finally {
         setIsCheckingPassword(false)
       }
@@ -1449,6 +1449,25 @@ function ShareView({ token }: { token: string }) {
       </section>
     </main>
   )
+}
+
+function normalizeShareAccessError(caughtError: unknown, fallback = 'This share link is unavailable.') {
+  const message = caughtError instanceof Error ? caughtError.message : fallback
+  const lowered = message.toLowerCase()
+
+  if (lowered.includes('share not found') || lowered.includes('share link is unavailable')) {
+    return 'This share link is unavailable.'
+  }
+
+  if (lowered.includes('share link expired')) {
+    return 'This share link is no longer available.'
+  }
+
+  if (lowered.includes('request failed with 404') || lowered.includes('request failed with 410')) {
+    return 'This share link is unavailable.'
+  }
+
+  return message
 }
 
 function ToggleButton({
