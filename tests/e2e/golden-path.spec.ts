@@ -162,6 +162,43 @@ test('guides first-run from record draft to save then share', async ({ page }) =
   expect(consoleMessages()).toEqual([])
 })
 
+test('guides live recording controls through pause, resume, and discard', async ({ page }) => {
+  const consoleMessages = collectConsoleIssues(page)
+  await installRecorderStub(page)
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Start' }).click()
+
+  const captureStatus = page.getByLabel('Capture status')
+  await expect(captureStatus.getByText('Source: None')).toBeVisible()
+  await expect(captureStatus.getByText('Mic: On')).toBeVisible()
+  await expect(captureStatus.getByText('Camera: Off')).toBeVisible()
+  await expect(captureStatus.getByText(/Time: 00:00/)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Record', exact: true }).click()
+  await expect(page.getByText('Get ready')).toBeVisible()
+  await expect(captureStatus.getByText('Source: Armed')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible()
+
+  await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible()
+  await page.getByRole('button', { name: 'Pause' }).click()
+  await expect(page.locator('.pause-overlay').getByText('Paused')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Resume' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Resume' }).click()
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Cancel' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Review' })).toBeHidden()
+  await expect(page.getByText('No recordings yet')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Record first take' })).toBeVisible()
+  await expect(captureStatus.getByText('Source: None')).toBeVisible()
+
+  await saveSmokeScreenshot(page, 'recording-controls-discard.png')
+  expect(consoleMessages()).toEqual([])
+})
+
 test('shows library recordings, validates rename, and opens the share modal', async ({
   page,
   request,

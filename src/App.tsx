@@ -713,7 +713,7 @@ function StudioApp() {
             {status === 'countdown' ? (
               <div className="countdown-overlay" aria-live="polite">
                 <strong>{countdown}</strong>
-                <span>Recording starts</span>
+                <span>Get ready</span>
               </div>
             ) : null}
             {status === 'paused' ? (
@@ -742,13 +742,23 @@ function StudioApp() {
               label="Camera"
               onClick={toggleCamera}
             />
-            <div className={`source-pill ${screenReady ? 'ready' : ''}`}>
-              <Radio size={16} />
-              <span>{screenReady ? 'Source armed' : 'No source'}</span>
-            </div>
-            <div className="elapsed" title="Elapsed time">
-              <Clock size={16} />
-              <span>{formatTime(elapsedMs)}</span>
+            <div className="capture-readout" aria-label="Capture status">
+              <span className={`readout-pill ${screenReady ? 'ready' : ''}`}>
+                <Radio size={16} />
+                Source: {screenReady ? 'Armed' : 'None'}
+              </span>
+              <span className={`readout-pill ${micEnabled ? 'ready' : ''}`}>
+                <Mic size={16} />
+                Mic: {micEnabled ? 'On' : 'Off'}
+              </span>
+              <span className={`readout-pill ${cameraEnabled ? 'ready' : ''}`}>
+                <Camera size={16} />
+                Camera: {cameraEnabled ? 'On' : 'Off'}
+              </span>
+              <span className="readout-pill" title="Elapsed time">
+                <Clock size={16} />
+                Time: {formatTime(elapsedMs)}
+              </span>
             </div>
 
             {status === 'recording' ? (

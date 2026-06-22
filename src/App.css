@@ -541,11 +541,21 @@ button {
   background: rgba(15, 118, 110, 0.12);
 }
 
-.source-pill {
+.capture-readout {
+  flex: 1 1 360px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: min(100%, 280px);
+  margin-left: auto;
+}
+
+.readout-pill {
   min-height: 40px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  flex: 1 1 132px;
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -555,10 +565,14 @@ button {
   font-weight: 720;
 }
 
-.source-pill.ready {
+.readout-pill.ready {
   color: var(--accent-ink);
   border-color: rgba(15, 118, 110, 0.3);
   background: rgba(15, 118, 110, 0.1);
+}
+
+.readout-pill svg {
+  flex: 0 0 auto;
 }
 
 .icon-button {
@@ -1101,7 +1115,7 @@ a:focus-visible {
     display: none;
   }
 
-  .elapsed {
+  .capture-readout {
     margin-left: 0;
   }
 }
@@ -1137,8 +1151,7 @@ a:focus-visible {
   }
 
   .control-strip > button,
-  .control-strip .elapsed,
-  .control-strip .source-pill {
+  .control-strip .capture-readout {
     flex: 1 1 128px;
   }
 
