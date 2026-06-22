@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import {
   Camera,
   Check,
@@ -102,6 +102,8 @@ function StudioApp() {
     }
   })
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const recordButtonRef = useRef<HTMLButtonElement | null>(null)
+  const saveButtonRef = useRef<HTMLButtonElement | null>(null)
 
   const captureSupported = Boolean(navigator.mediaDevices?.getDisplayMedia)
   const storageCompliant = appConfig?.dataRootCompliant !== false && !configError
@@ -138,6 +140,41 @@ function StudioApp() {
 
     return 'record'
   }, [selectedRecording, setupComplete, shareDialogOpen, status])
+  const hasActiveCapture =
+    status === 'requesting' || status === 'countdown' || status === 'recording' || status === 'paused'
+  const hasReviewDraft = status === 'ready'
+  const hasLibraryRecording = recordings.length > 0
+  const hasSharedRecording = recordings.some((recording) => recording.shareToken)
+  const firstRunPathReady = useMemo(
+    () => ({
+      setup: setupComplete,
+      record: hasReviewDraft || hasActiveCapture || hasLibraryRecording,
+      review: hasReviewDraft || hasLibraryRecording,
+      share: hasSharedRecording,
+      library: hasLibraryRecording,
+    }),
+    [hasActiveCapture, hasLibraryRecording, hasReviewDraft, hasSharedRecording, setupComplete],
+  )
+  const firstRunStep = hasReviewDraft
+    ? 'Save'
+    : hasLibraryRecording
+      ? 'Share'
+      : setupComplete
+        ? 'Record'
+        : 'Setup'
+  const firstRunPrimaryAction = (() => {
+    if (!setupComplete) {
+      return 'Complete room setup'
+    }
+
+    if (hasReviewDraft) {
+      return 'Save first take'
+    }
+
+    return 'Record first take'
+  })()
+  const isFirstRunActionDisabled =
+    setupComplete && !hasReviewDraft && status !== 'idle' && status !== 'error'
   const nextAction = getNextAction(activeStep, status, selectedRecording)
 
   const applyShareDefaults = useCallback((recording: Recording | null) => {
@@ -265,6 +302,26 @@ function StudioApp() {
 
     void startRecording()
   }, [recordingBlob, resetRecording, startRecording])
+
+  const handleFirstRunAction = useCallback(() => {
+    if (!setupComplete) {
+      completeSetup()
+      return
+    }
+
+    if (isFirstRunActionDisabled) {
+      return
+    }
+
+    if (hasReviewDraft) {
+      saveButtonRef.current?.scrollIntoView({ block: 'center' })
+      saveButtonRef.current?.focus()
+      return
+    }
+
+    recordButtonRef.current?.scrollIntoView({ block: 'center' })
+    recordButtonRef.current?.focus()
+  }, [completeSetup, hasReviewDraft, isFirstRunActionDisabled, setupComplete])
 
   const handleCancel = useCallback(() => {
     if (!window.confirm('Stop and discard this capture?')) {
@@ -435,6 +492,7 @@ function StudioApp() {
       <section className="workspace">
         <MissionRail
           activeStep={activeStep}
+          pathComplete={firstRunPathReady}
           appConfig={appConfig}
           captureSupported={captureSupported}
           nextAction={nextAction}
@@ -562,6 +620,7 @@ function StudioApp() {
               <button
                 className="primary-button"
                 type="button"
+                ref={recordButtonRef}
                 onClick={handleStart}
                 disabled={!captureSupported}
               >
@@ -571,7 +630,7 @@ function StudioApp() {
             ) : null}
           </div>
 
-          {status === 'ready' ? (
+            {status === 'ready' ? (
             <section className="review-card" aria-label="Review recording">
               <div className="review-heading">
                 <span className="row-icon" aria-hidden="true">
@@ -594,6 +653,7 @@ function StudioApp() {
                   className="secondary-button"
                   type="button"
                   onClick={handleSave}
+                  ref={saveButtonRef}
                   disabled={!recordingBlob || isSaving}
                 >
                   {isSaving ? <UploadCloud size={17} /> : <Save size={17} />}
@@ -658,6 +718,35 @@ function StudioApp() {
               <div className="empty-library">
                 <ListChecks size={22} />
                 <span>No recordings yet</span>
+                <p>Your path: Setup, Record, Save, Share.</p>
+                <ol className="first-run-steps">
+                  <li className={firstRunPathReady.setup ? 'complete' : ''}>
+                    <span>{firstRunPathReady.setup ? <Check size={14} /> : <span>1</span>}</span>
+                    Set up room
+                  </li>
+                  <li className={firstRunPathReady.record ? 'complete' : ''}>
+                    <span>{firstRunPathReady.record ? <Check size={14} /> : <span>2</span>}</span>
+                    Record first take
+                  </li>
+                  <li className={firstRunPathReady.review ? 'complete' : ''}>
+                    <span>{firstRunPathReady.review ? <Check size={14} /> : <span>3</span>}</span>
+                    Save to library
+                  </li>
+                  <li className={firstRunPathReady.share ? 'complete' : ''}>
+                    <span>{firstRunPathReady.share ? <Check size={14} /> : <span>4</span>}</span>
+                    Share
+                  </li>
+                </ol>
+                <button
+                  className="primary-button compact"
+                  type="button"
+                  onClick={handleFirstRunAction}
+                  disabled={isFirstRunActionDisabled}
+                  aria-label={`First run action: ${firstRunPrimaryAction}`}
+                >
+                  {firstRunPrimaryAction}
+                </button>
+                <small>{`Next: ${firstRunStep}`}</small>
               </div>
             ) : null}
           </div>
@@ -765,12 +854,20 @@ function StudioApp() {
 
 function MissionRail({
   activeStep,
+  pathComplete,
   appConfig,
   captureSupported,
   nextAction,
   setupComplete,
 }: {
   activeStep: StudioStep
+  pathComplete: {
+    setup: boolean
+    record: boolean
+    review: boolean
+    share: boolean
+    library: boolean
+  }
   appConfig: AppConfig | null
   captureSupported: boolean
   nextAction: string
@@ -788,25 +885,25 @@ function MissionRail({
       id: 'record',
       label: 'Record',
       icon: <MonitorUp size={17} />,
-      complete: false,
+      complete: pathComplete.record,
     },
     {
       id: 'review',
       label: 'Review',
       icon: <FilePenLine size={17} />,
-      complete: false,
+      complete: pathComplete.review,
     },
     {
       id: 'share',
       label: 'Share',
       icon: <Link2 size={17} />,
-      complete: false,
+      complete: pathComplete.share,
     },
     {
       id: 'library',
       label: 'Library',
       icon: <ListChecks size={17} />,
-      complete: false,
+      complete: pathComplete.library,
     },
   ]
 
@@ -1361,3 +1458,4 @@ function normalizeFileName(value: string) {
 }
 
 export default App
+

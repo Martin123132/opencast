@@ -726,6 +726,55 @@ a:focus-visible {
   border-radius: 8px;
 }
 
+.empty-library p {
+  margin: 0;
+  padding: 0 8px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.first-run-steps {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.first-run-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.first-run-steps li.complete {
+  color: var(--accent-ink);
+}
+
+.first-run-steps li span:first-child {
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 780;
+  color: var(--muted);
+}
+
+.first-run-steps li.complete span:first-child {
+  border-color: rgba(15, 118, 110, 0.32);
+  background: rgba(15, 118, 110, 0.12);
+}
+
 .viewer-panel {
   margin-top: 18px;
 }

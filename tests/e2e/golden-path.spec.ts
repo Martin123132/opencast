@@ -22,17 +22,54 @@ test('loads config and advances from setup into the recorder path', async ({ pag
   await expect(page.getByText('Capture ready')).toBeVisible()
   await expect(page.getByText('D:\\open-source\\opencast-e2e-data')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Ready Room' })).toBeVisible()
+  await expect(page.getByText('Your path: Setup, Record, Save, Share.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Complete room setup' })).toBeVisible()
+  await expect(page.getByText('Set up room')).toBeVisible()
   await expect(page.getByLabel('Current guidance').getByText('Confirm the room')).toBeVisible()
 
   await page.getByRole('button', { name: 'Start' }).click()
 
   await expect(page.getByRole('heading', { name: 'Ready Room' })).toBeHidden()
-  await expect(page.getByRole('button', { name: 'Record' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeVisible()
   await expect(page.getByText('Start recording')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Record first take' })).toBeVisible()
   await expect(page.getByLabel('Current guidance').getByText('Choose what to capture')).toBeVisible()
   await expect(page.getByText('No recordings yet')).toBeVisible()
 
   await saveSmokeScreenshot(page, 'setup-transition.png')
+  expect(consoleMessages()).toEqual([])
+})
+
+test('guides first-run onboarding from setup to first saved recording and share', async ({ page, request }) => {
+  const consoleMessages = collectConsoleIssues(page)
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Start' }).click()
+
+  const firstRunTitle = 'First run take'
+  await createRecording(request, firstRunTitle)
+  await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible()
+  await page.getByRole('button', { name: 'Refresh' }).click()
+
+  await expect(page.getByText('No recordings yet')).toBeHidden()
+  await expect(page.getByRole('button', { name: firstRunTitle })).toBeVisible()
+  await expect(page.getByLabel('Current guidance').getByText('Manage the archive')).toBeVisible()
+  await expect(page.getByText('Your path: Setup, Record, Save, Share.')).toBeHidden()
+  await expect(
+    page.getByRole('button', { name: 'Complete room setup' }),
+  ).toBeHidden()
+
+  const selected = page.getByLabel('Selected recording')
+  await expect(selected).toBeVisible()
+  await selected.getByRole('button', { name: 'Share' }).click()
+
+  const shareDialog = page.getByRole('dialog', { name: 'Share recording' })
+  await expect(shareDialog).toBeVisible()
+  await expect(shareDialog.getByText('Private')).toBeVisible()
+  await shareDialog.getByRole('button', { name: 'Create link' }).click()
+  await expect(shareDialog.getByText('/s/')).toBeVisible()
+
+  await saveSmokeScreenshot(page, 'first-run-share-flow.png')
   expect(consoleMessages()).toEqual([])
 })
 
