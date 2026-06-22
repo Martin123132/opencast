@@ -54,6 +54,7 @@ async function installRecorderStub(page: Page) {
 }
 
 test.beforeEach(async ({ request }) => {
+  await waitForApiConfig(request)
   await resetE2eData()
   await deleteRecordings(request)
 })
@@ -65,7 +66,7 @@ test('loads config and advances from setup into the recorder path', async ({ pag
   await expect(page).toHaveTitle(/ShareFrame/)
   await expect(page.getByRole('heading', { name: 'ShareFrame' })).toBeVisible()
   await expect(page.getByText('Capture ready')).toBeVisible()
-  await expect(page.getByText('D:\\open-source\\opencast-e2e-data')).toBeVisible()
+  await expect(page.getByText(e2eDataRoot)).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Ready Room' })).toBeVisible()
   await expect(page.getByText('Your path: Setup, Record, Save, Share.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Complete room setup' })).toBeVisible()
@@ -426,6 +427,30 @@ async function deleteRecordings(request: APIRequestContext) {
   for (const recording of body.recordings ?? []) {
     await request.delete(`/api/recordings/${recording.id}`)
   }
+}
+
+async function waitForApiConfig(request: APIRequestContext) {
+  const deadline = Date.now() + 15_000
+  let lastError: unknown
+
+  while (Date.now() < deadline) {
+    try {
+      const response = await request.get('/api/config')
+
+      if (response.ok()) {
+        const config = (await response.json()) as { dataRoot?: string }
+        if (config.dataRoot === e2eDataRoot) {
+          return
+        }
+      }
+    } catch (error) {
+      lastError = error
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+
+  throw new Error(`E2E API did not become ready with data root ${e2eDataRoot}: ${String(lastError)}`)
 }
 
 async function createRecording(request: APIRequestContext, title: string) {

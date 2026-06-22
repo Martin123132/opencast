@@ -16,6 +16,16 @@ export interface EvidenceGeneratorOptions extends EvidenceTemplateOptions {
 
 const TEMPLATE_FOOTER = '## Evidence links'
 const DEFAULT_COMMAND = 'npm run evidence:share-lifecycle'
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const requiredStorageDrive = 'D:'
+
+function resolveDDrivePath(targetPath: string) {
+  const resolved = path.resolve(targetPath)
+  if (path.parse(resolved).root.toUpperCase() !== `${requiredStorageDrive}\\`) {
+    throw new Error(`Share lifecycle evidence must stay on ${requiredStorageDrive}. Refusing to use ${resolved}`)
+  }
+  return resolved
+}
 
 export function buildShareLifecycleEvidenceDraft({
   sourceSha = '<SOURCE_SHA>',
@@ -58,18 +68,19 @@ ${TEMPLATE_FOOTER}
 }
 
 export async function writeShareLifecycleEvidenceDraft({
-  outputDirectory = path.resolve(process.cwd(), '.evidence'),
+  outputDirectory = path.join(repoRoot, '.evidence'),
   sourcePath = 'share-lifecycle-evidence',
   sourceSha,
   ciUrl,
   checkCommand,
   timestamp,
 }: EvidenceGeneratorOptions = {}) {
+  const resolvedOutputDirectory = resolveDDrivePath(outputDirectory)
   const safeSource = `${sourcePath}-${new Date(timestamp || Date.now()).toISOString().replace(/[^\w-]/g, '-')}`
   const fileName = `${safeSource}.md`
-  const filePath = path.join(outputDirectory, fileName)
+  const filePath = path.join(resolvedOutputDirectory, fileName)
 
-  await mkdir(outputDirectory, { recursive: true })
+  await mkdir(resolvedOutputDirectory, { recursive: true })
 
   const draft = buildShareLifecycleEvidenceDraft({
     sourceSha,

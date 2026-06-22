@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
-import os from 'node:os'
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { test } from 'node:test'
 import path from 'node:path'
 import { writeShareLifecycleEvidenceDraft } from '../scripts/share-lifecycle-evidence.ts'
@@ -153,7 +152,9 @@ test('share lifecycle evidence generator command and ignore location stay wired'
 })
 
 test('share lifecycle evidence generator creates ignored draft with required sections', async () => {
-  const outputDirectory = await mkdtemp(path.join(os.tmpdir(), 'share-lifecycle-evidence-'))
+  const evidenceTestRoot = 'D:\\open-source\\.temp\\opencast-evidence-tests'
+  await mkdir(evidenceTestRoot, { recursive: true })
+  const outputDirectory = await mkdtemp(path.join(evidenceTestRoot, 'share-lifecycle-evidence-'))
   const sourcePath = 'share-lifecycle-evidence'
   const sourceSha = 'abc1234'
   const ciUrl = 'https://github.com/Martin123132/opencast/actions/runs/999'
@@ -216,5 +217,17 @@ test('share lifecycle evidence generator creates ignored draft with required sec
     assert.ok(content.includes(sourceSha), 'Generated evidence should include source SHA')
   } finally {
     await rm(outputDirectory, { force: true, recursive: true })
+    await rm(evidenceTestRoot, { force: true, recursive: true })
   }
+})
+
+test('share lifecycle evidence generator rejects C-drive output', async () => {
+  await assert.rejects(
+    () =>
+      writeShareLifecycleEvidenceDraft({
+        outputDirectory: 'C:\\Users\\ollet\\share-lifecycle-evidence',
+        timestamp: '2026-06-22T12:00:00.000Z',
+      }),
+    /must stay on D:/,
+  )
 })
