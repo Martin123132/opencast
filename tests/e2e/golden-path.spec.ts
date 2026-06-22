@@ -259,6 +259,15 @@ test('shows library recordings, validates rename, and opens the share modal', as
   await expect(page.getByRole('button', { name: renamedTitle })).toBeVisible()
   await expect(selected.getByRole('button', { name: 'Rename' })).toBeDisabled()
 
+  const librarySearch = page.getByRole('textbox', { name: 'Search' })
+  await expect(librarySearch).toBeVisible()
+  await librarySearch.fill('renamed')
+  await expect(page.getByRole('button', { name: renamedTitle })).toBeVisible()
+  await librarySearch.fill('missing')
+  await expect(page.getByText('No matching recordings')).toBeVisible()
+  await page.getByRole('button', { name: 'Clear search' }).click()
+  await expect(page.getByRole('button', { name: renamedTitle })).toBeVisible()
+
   await page.getByRole('button', { name: 'Share' }).click()
   const shareDialog = page.getByRole('dialog', { name: 'Share recording' })
   await expect(shareDialog).toBeVisible()

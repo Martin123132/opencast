@@ -110,6 +110,7 @@ function StudioApp() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [libraryError, setLibraryError] = useState<string | null>(null)
+  const [libraryQuery, setLibraryQuery] = useState('')
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null)
   const [configError, setConfigError] = useState<string | null>(null)
   const [setupComplete, setSetupComplete] = useState(() => {
@@ -129,6 +130,24 @@ function StudioApp() {
     () => recordings.find((recording) => recording.id === selectedId) ?? recordings[0] ?? null,
     [recordings, selectedId],
   )
+  const visibleRecordings = useMemo(() => {
+    const query = libraryQuery.trim().toLowerCase()
+
+    if (!query) {
+      return recordings
+    }
+
+    return recordings.filter((recording) =>
+      [
+        recording.title,
+        formatDate(recording.createdAt),
+        recording.shareToken ? 'shared' : recording.shareWasRevoked ? 'revoked' : 'private',
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(query),
+    )
+  }, [libraryQuery, recordings])
   const activeStep = useMemo<StudioStep>(() => {
     if (!setupComplete) {
       return 'setup'
@@ -918,8 +937,25 @@ function StudioApp() {
             </div>
           ) : null}
 
+          {recordings.length ? (
+            <div className="library-tools" aria-label="Library tools">
+              <label htmlFor="library-search">Search</label>
+              <input
+                id="library-search"
+                value={libraryQuery}
+                onChange={(event) => setLibraryQuery(event.target.value)}
+                placeholder="Title, shared, private, revoked"
+              />
+              {libraryQuery ? (
+                <button className="secondary-button compact" type="button" onClick={() => setLibraryQuery('')}>
+                  Clear
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="recording-list">
-            {recordings.map((recording) => (
+            {visibleRecordings.map((recording) => (
               <button
                 className={`recording-row ${recording.id === selectedRecording?.id ? 'selected' : ''}`}
                 key={recording.id}
@@ -978,6 +1014,17 @@ function StudioApp() {
                   {firstRunPrimaryAction}
                 </button>
                 <small>{`Next: ${firstRunStep}`}</small>
+              </div>
+            ) : null}
+
+            {recordings.length && !visibleRecordings.length ? (
+              <div className="empty-library">
+                <ListChecks size={22} />
+                <span>No matching recordings</span>
+                <p>Try another title or sharing state.</p>
+                <button className="secondary-button compact" type="button" onClick={() => setLibraryQuery('')}>
+                  Clear search
+                </button>
               </div>
             ) : null}
           </div>

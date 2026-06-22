@@ -720,6 +720,31 @@ a:focus-visible {
   margin-left: auto;
 }
 
+.library-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.library-tools label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.library-tools input {
+  min-width: 0;
+  flex: 1;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--surface);
+  font-size: 13px;
+}
+
 .recording-row {
   width: 100%;
   display: grid;
@@ -1199,12 +1224,15 @@ a:focus-visible {
 
   .setup-card,
   .save-row,
+  .library-tools,
   .rename-row {
     align-items: stretch;
     flex-direction: column;
   }
 
   .setup-card .primary-button,
+  .library-tools .secondary-button,
+  .library-tools input,
   .rename-row .secondary-button {
     width: 100%;
   }
