@@ -51,6 +51,12 @@ npm.cmd run build
 npm.cmd run test:e2e
 ```
 
+Shared privacy contract:
+
+- [`SHARE_LIFECYCLE_PRIVACY_CHECKLIST.md`](./SHARE_LIFECYCLE_PRIVACY_CHECKLIST.md)
+
+Keep this checklist in scope when touching share create/revoke/recreate behavior or guest access handling.
+
 The browser E2E suite runs Edge against isolated local ports and writes its reports,
 screenshots, traces, and test data under D-drive paths:
 
