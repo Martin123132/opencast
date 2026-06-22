@@ -238,14 +238,15 @@ test('shows library recordings, validates rename, and opens the share modal', as
   request,
 }) => {
   const consoleMessages = collectConsoleIssues(page)
+  await createRecording(request, 'Alpha fixture')
   const recording = await createRecording(request, 'Golden path fixture')
 
   await page.goto('/')
   await page.getByRole('button', { name: 'Start' }).click()
 
   const selected = page.getByLabel('Selected recording')
-  await expect(page.getByRole('button', { name: /Golden path fixture/ })).toBeVisible()
-  await expect(page.getByText('1 saved')).toBeVisible()
+  await page.getByRole('button', { name: /Golden path fixture/ }).click()
+  await expect(page.getByText('2 saved')).toBeVisible()
   await expect(selected.getByRole('textbox', { name: 'Recording title' })).toHaveValue(
     'Golden path fixture',
   )
@@ -267,6 +268,13 @@ test('shows library recordings, validates rename, and opens the share modal', as
   await expect(page.getByText('No matching recordings')).toBeVisible()
   await page.getByRole('button', { name: 'Clear search' }).click()
   await expect(page.getByRole('button', { name: renamedTitle })).toBeVisible()
+
+  const librarySort = page.getByRole('combobox', { name: 'Sort' })
+  const libraryRows = page.getByLabel('Recording library').locator('.recording-row')
+  await expect(librarySort).toBeVisible()
+  await librarySort.selectOption('title')
+  await expect(libraryRows.first()).toContainText('Alpha fixture')
+  await expect(libraryRows.nth(1)).toContainText(renamedTitle)
 
   await page.getByRole('button', { name: 'Share' }).click()
   const shareDialog = page.getByRole('dialog', { name: 'Share recording' })

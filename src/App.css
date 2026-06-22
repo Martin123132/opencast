@@ -733,9 +733,9 @@ a:focus-visible {
   font-weight: 700;
 }
 
-.library-tools input {
+.library-tools input,
+.library-tools select {
   min-width: 0;
-  flex: 1;
   height: 38px;
   padding: 0 10px;
   border: 1px solid var(--border);
@@ -743,6 +743,14 @@ a:focus-visible {
   color: var(--ink);
   background: var(--surface);
   font-size: 13px;
+}
+
+.library-tools input {
+  flex: 1;
+}
+
+.library-tools select {
+  min-width: 128px;
 }
 
 .recording-row {
@@ -1233,6 +1241,7 @@ a:focus-visible {
   .setup-card .primary-button,
   .library-tools .secondary-button,
   .library-tools input,
+  .library-tools select,
   .rename-row .secondary-button {
     width: 100%;
   }

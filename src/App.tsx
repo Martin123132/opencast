@@ -52,6 +52,7 @@ import type { RecorderStatus } from './types'
 import { useScreenRecorder } from './hooks/useScreenRecorder'
 
 type StudioStep = 'setup' | 'record' | 'review' | 'share' | 'library'
+type LibrarySort = 'newest' | 'title' | 'share'
 
 type PendingDelete = {
   recording: Recording
@@ -111,6 +112,7 @@ function StudioApp() {
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [libraryError, setLibraryError] = useState<string | null>(null)
   const [libraryQuery, setLibraryQuery] = useState('')
+  const [librarySort, setLibrarySort] = useState<LibrarySort>('newest')
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null)
   const [configError, setConfigError] = useState<string | null>(null)
   const [setupComplete, setSetupComplete] = useState(() => {
@@ -132,22 +134,17 @@ function StudioApp() {
   )
   const visibleRecordings = useMemo(() => {
     const query = libraryQuery.trim().toLowerCase()
+    const filteredRecordings = query
+      ? recordings.filter((recording) =>
+          [recording.title, formatDate(recording.createdAt), getRecordingShareState(recording)]
+            .join(' ')
+            .toLowerCase()
+            .includes(query),
+        )
+      : recordings
 
-    if (!query) {
-      return recordings
-    }
-
-    return recordings.filter((recording) =>
-      [
-        recording.title,
-        formatDate(recording.createdAt),
-        recording.shareToken ? 'shared' : recording.shareWasRevoked ? 'revoked' : 'private',
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(query),
-    )
-  }, [libraryQuery, recordings])
+    return [...filteredRecordings].sort((left, right) => compareLibraryRecordings(left, right, librarySort))
+  }, [libraryQuery, librarySort, recordings])
   const activeStep = useMemo<StudioStep>(() => {
     if (!setupComplete) {
       return 'setup'
@@ -951,35 +948,45 @@ function StudioApp() {
                   Clear
                 </button>
               ) : null}
+              <label htmlFor="library-sort">Sort</label>
+              <select
+                id="library-sort"
+                value={librarySort}
+                onChange={(event) => setLibrarySort(event.target.value as LibrarySort)}
+              >
+                <option value="newest">Newest</option>
+                <option value="title">Name</option>
+                <option value="share">Share state</option>
+              </select>
             </div>
           ) : null}
 
           <div className="recording-list">
-            {visibleRecordings.map((recording) => (
-              <button
-                className={`recording-row ${recording.id === selectedRecording?.id ? 'selected' : ''}`}
-                key={recording.id}
-                type="button"
-                onClick={() => handleSelectRecording(recording)}
-              >
-                <span className="row-icon" aria-hidden="true">
-                  <Play size={16} fill="currentColor" />
-                </span>
-                <span>
-                  <strong>{recording.title}</strong>
-                  <small>
-                    {formatDate(recording.createdAt)} / {formatBytes(recording.sizeBytes)}
-                  </small>
-                </span>
-                <span
-                  className={`row-status ${
-                    recording.shareToken ? 'shared' : recording.shareWasRevoked ? 'revoked' : ''
-                  }`}
+            {visibleRecordings.map((recording) => {
+              const shareState = getRecordingShareState(recording)
+
+              return (
+                <button
+                  className={`recording-row ${recording.id === selectedRecording?.id ? 'selected' : ''}`}
+                  key={recording.id}
+                  type="button"
+                  onClick={() => handleSelectRecording(recording)}
                 >
-                  {recording.shareToken ? 'Shared' : recording.shareWasRevoked ? 'Revoked' : 'Private'}
-                </span>
-              </button>
-            ))}
+                  <span className="row-icon" aria-hidden="true">
+                    <Play size={16} fill="currentColor" />
+                  </span>
+                  <span>
+                    <strong>{recording.title}</strong>
+                    <small>
+                      {formatDate(recording.createdAt)} / {formatBytes(recording.sizeBytes)}
+                    </small>
+                  </span>
+                  <span className={`row-status ${shareState === 'private' ? '' : shareState}`}>
+                    {capitalizeShareState(shareState)}
+                  </span>
+                </button>
+              )
+            })}
 
             {!recordings.length ? (
               <div className="empty-library">
@@ -1879,6 +1886,54 @@ function formatDate(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value))
+}
+
+function getRecordingShareState(recording: Recording) {
+  if (recording.shareToken) {
+    return 'shared'
+  }
+
+  if (recording.shareWasRevoked) {
+    return 'revoked'
+  }
+
+  return 'private'
+}
+
+function capitalizeShareState(value: ReturnType<typeof getRecordingShareState>) {
+  return `${value.slice(0, 1).toUpperCase()}${value.slice(1)}`
+}
+
+function compareLibraryRecordings(left: Recording, right: Recording, sort: LibrarySort) {
+  if (sort === 'title') {
+    return compareText(left.title, right.title) || right.createdAt.localeCompare(left.createdAt)
+  }
+
+  if (sort === 'share') {
+    return (
+      getShareStateRank(getRecordingShareState(left)) - getShareStateRank(getRecordingShareState(right)) ||
+      compareText(left.title, right.title) ||
+      right.createdAt.localeCompare(left.createdAt)
+    )
+  }
+
+  return right.createdAt.localeCompare(left.createdAt)
+}
+
+function getShareStateRank(value: ReturnType<typeof getRecordingShareState>) {
+  if (value === 'shared') {
+    return 0
+  }
+
+  if (value === 'revoked') {
+    return 1
+  }
+
+  return 2
+}
+
+function compareText(left: string, right: string) {
+  return left.localeCompare(right, undefined, { sensitivity: 'base' })
 }
 
 function formatBytes(value: number) {
