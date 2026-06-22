@@ -64,3 +64,8 @@ screenshots, traces, and test data under D-drive paths:
 D:\open-source\.temp\opencast-e2e
 D:\open-source\opencast-e2e-data
 ```
+
+Sharing behavior PR review checklist:
+
+- [`.github/PULL_REQUEST_TEMPLATE.md`](./.github/PULL_REQUEST_TEMPLATE.md)
+- Use this checklist when changing sharing creation/revoke/recreate or guest flow logic.

@@ -63,3 +63,30 @@ test('privacy checklist covers share lifecycle requirements end-to-end', async (
     'non-leaky unavailable response',
   ])
 })
+
+test('PR review checklist requires share lifecycle privacy validation', async () => {
+  const templatePath = path.resolve(process.cwd(), '.github', 'PULL_REQUEST_TEMPLATE.md')
+  const template = await readFile(templatePath, 'utf8')
+
+  assertChecklistContains(template.toLowerCase(), [
+    'share lifecycle privacy review',
+    'share-lifecycle privacy checklist',
+    'create/revoke/recreate',
+    'reload/persistence',
+    'stale-token',
+    'owner vs guest',
+    'non-leaky',
+    'npm run test',
+    'npm run test:e2e',
+    'sharetoken',
+    'sharewasrevoked',
+  ])
+
+  const readmePath = path.resolve(process.cwd(), 'README.md')
+  const readme = await readFile(readmePath, 'utf8')
+  assert.equal(
+    checkForLink(readme, 'PULL_REQUEST_TEMPLATE.md'),
+    true,
+    'README should link the PR review checklist',
+  )
+})
