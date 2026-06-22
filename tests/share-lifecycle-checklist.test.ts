@@ -90,3 +90,38 @@ test('PR review checklist requires share lifecycle privacy validation', async ()
     'README should link the PR review checklist',
   )
 })
+
+test('release review template captures share lifecycle privacy evidence', async () => {
+  const templatePath = path.resolve(
+    process.cwd(),
+    '.github',
+    'SHARE_LIFECYCLE_RELEASE_REVIEW_TEMPLATE.md',
+  )
+  const releaseTemplate = await readFile(templatePath, 'utf8')
+
+  assertChecklistContains(releaseTemplate.toLowerCase(), [
+    'share lifecycle release review',
+    'mandatory validation checks',
+    'create path validated',
+    'revoke path validated',
+    'reload/persistence',
+    'recreate path validated',
+    'old/stale token blocked',
+    'owner state is explicit',
+    'guest flow remains safe',
+    'guest responses do not leak',
+    'npm run lint',
+    'npm run build',
+    'npm run test',
+    'npm run test:e2e',
+    'ci run url',
+  ])
+
+  const readmePath = path.resolve(process.cwd(), 'README.md')
+  const readme = await readFile(readmePath, 'utf8')
+  assert.equal(
+    checkForLink(readme, 'SHARE_LIFECYCLE_RELEASE_REVIEW_TEMPLATE.md'),
+    true,
+    'README should link the release review evidence template',
+  )
+})

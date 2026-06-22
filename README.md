@@ -69,3 +69,8 @@ Sharing behavior PR review checklist:
 
 - [`.github/PULL_REQUEST_TEMPLATE.md`](./.github/PULL_REQUEST_TEMPLATE.md)
 - Use this checklist when changing sharing creation/revoke/recreate or guest flow logic.
+
+Share lifecycle release review evidence:
+
+- [`.github/SHARE_LIFECYCLE_RELEASE_REVIEW_TEMPLATE.md`](./.github/SHARE_LIFECYCLE_RELEASE_REVIEW_TEMPLATE.md)
+- Use this for release-ready sharing changes and to record proof links/results in one place.
