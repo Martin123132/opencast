@@ -419,13 +419,14 @@ function StudioApp() {
       const shared = await createShare(recording.id, settings)
       await loadLibrary()
       const nextUrl = shared.shareToken ? shareLink(shared.shareToken) : null
+      const isUpdating = Boolean(recording.shareToken)
       applyShareDefaults(shared)
       setSelectedId(shared.id)
       setSelectedTitle(shared.title)
       setShareUrl(nextUrl)
       setSharePassword('')
       setShareDialogOpen(true)
-      setShareStatus(shared.shareToken ? 'Share link copied.' : null)
+      setShareStatus(isUpdating ? 'Share link updated.' : 'Share link created.')
 
       if (nextUrl) {
         await copyText(nextUrl)
@@ -983,6 +984,9 @@ function ShareDialog({
   onSave: () => void
   onRevoke: () => void
 }) {
+  const hasLink = Boolean(recording.shareToken || shareUrl)
+  const linkActionLabel = recording.shareToken || shareUrl ? 'Update link' : 'Create link'
+
   return (
     <div className="modal-backdrop" role="presentation">
       <section className="share-dialog" role="dialog" aria-modal="true" aria-label="Share recording">
@@ -991,16 +995,22 @@ function ShareDialog({
             <h2>Share</h2>
             <p>{recording.title}</p>
           </div>
-          <button className="icon-button" type="button" onClick={onClose} title="Close">
+          <button
+            aria-label="Close share dialog"
+            className="icon-button"
+            type="button"
+            onClick={onClose}
+            title="Close"
+          >
             <X size={17} />
           </button>
         </div>
 
         <div className="share-state">
           <StatusChip
-            tone={recording.shareToken ? 'good' : 'neutral'}
+            tone={hasLink ? 'good' : 'neutral'}
             icon={recording.shareToken ? <Link2 size={15} /> : <Lock size={15} />}
-            label={recording.shareToken ? 'Link active' : 'Private'}
+            label={hasLink ? 'Share link active' : 'No shared link yet'}
           />
           <StatusChip
             tone={recording.sharePasswordProtected ? 'good' : 'neutral'}
@@ -1070,18 +1080,23 @@ function ShareDialog({
 
         {shareUrl ? (
           <div className="share-box">
-            <Check size={16} />
-            <a href={shareUrl}>{shareUrl}</a>
-            <button className="icon-button" type="button" title="Copy link" onClick={onCopy}>
-              <Copy size={16} />
-            </button>
+            <strong className="share-link-label">Guest link</strong>
+            <div className="share-link-row">
+              <a className="share-link" href={shareUrl}>
+                {shareUrl}
+              </a>
+              <button className="secondary-button compact" type="button" title="Copy link" onClick={onCopy}>
+                <Copy size={16} />
+                Copy link
+              </button>
+            </div>
           </div>
         ) : null}
 
         <div className="dialog-actions">
           <button className="primary-button" type="button" onClick={onSave}>
             <Link2 size={16} />
-            {recording.shareToken ? 'Save link' : 'Create link'}
+            {linkActionLabel}
           </button>
           {shareUrl ? (
             <a className="secondary-link" href={shareUrl} target="_blank" rel="noreferrer">

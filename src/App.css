@@ -811,6 +811,8 @@ a:focus-visible {
 }
 
 .share-box {
+  display: grid;
+  gap: 10px;
   min-width: 0;
   margin-top: 10px;
   padding: 10px;
@@ -819,14 +821,35 @@ a:focus-visible {
   background: rgba(15, 118, 110, 0.1);
 }
 
-.share-box a {
+.share-link-label {
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.share-link-row {
   min-width: 0;
-  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.share-link {
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
+  display: block;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
   color: var(--accent-ink);
   font-size: 13px;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-decoration: none;
 }
 
 .share-controls {
@@ -1112,5 +1135,17 @@ a:focus-visible {
 
   .countdown-overlay strong {
     font-size: 56px;
+  }
+
+  .share-box {
+    padding: 8px;
+  }
+
+  .share-link-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .share-link-row .secondary-button {
+    width: 100%;
   }
 }
