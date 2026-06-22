@@ -899,8 +899,12 @@ function StudioApp() {
                     {formatDate(recording.createdAt)} / {formatBytes(recording.sizeBytes)}
                   </small>
                 </span>
-                <span className={`row-status ${recording.shareToken ? 'shared' : ''}`}>
-                  {recording.shareToken ? 'Shared' : 'Private'}
+                <span
+                  className={`row-status ${
+                    recording.shareToken ? 'shared' : recording.shareWasRevoked ? 'revoked' : ''
+                  }`}
+                >
+                  {recording.shareToken ? 'Shared' : recording.shareWasRevoked ? 'Revoked' : 'Private'}
                 </span>
               </button>
             ))}
@@ -957,9 +961,23 @@ function StudioApp() {
                   <small>{formatTime(selectedRecording.durationMs ?? 0)}</small>
                 </div>
                 <StatusChip
-                  tone={selectedRecording.shareToken ? 'good' : 'neutral'}
-                  icon={selectedRecording.shareToken ? <Link2 size={15} /> : <Lock size={15} />}
-                  label={selectedRecording.shareToken ? 'Shared' : 'Private'}
+                  tone={
+                    selectedRecording.shareToken
+                      ? 'good'
+                      : selectedRecording.shareWasRevoked
+                        ? 'bad'
+                        : 'neutral'
+                  }
+                  icon={
+                    selectedRecording.shareToken ? <Link2 size={15} /> : <Lock size={15} />
+                  }
+                  label={
+                    selectedRecording.shareToken
+                      ? 'Shared'
+                      : selectedRecording.shareWasRevoked
+                        ? 'Revoked'
+                        : 'Private'
+                  }
                 />
               </div>
               <div className="rename-row">
@@ -1210,14 +1228,18 @@ function ShareDialog({
 }) {
   const hasActiveShare = Boolean(recording.shareToken && !recording.shareExpired)
   const hasAnyShareLink = Boolean(recording.shareToken || shareUrl)
-  const linkActionLabel = recording.shareExpired ? 'Recreate link' : hasAnyShareLink ? 'Update link' : 'Create link'
+  const hasRevokedLink = Boolean(recording.shareWasRevoked && !recording.shareToken)
+  const canRecreateLink = recording.shareExpired || hasRevokedLink
+  const linkActionLabel = canRecreateLink ? 'Recreate link' : hasAnyShareLink ? 'Update link' : 'Create link'
   const canShareActions = hasActiveShare
   const shareLinkLabel = recording.shareExpired
     ? 'Share link expired'
-    : hasActiveShare
-      ? 'Share link active'
-      : 'No shared link yet'
-  const shareLinkTone: 'good' | 'bad' | 'neutral' = recording.shareExpired
+    : hasRevokedLink
+      ? 'Share link revoked'
+      : hasActiveShare
+        ? 'Share link active'
+        : 'No shared link yet'
+  const shareLinkTone: 'good' | 'bad' | 'neutral' = recording.shareExpired || hasRevokedLink
     ? 'bad'
     : hasAnyShareLink
       ? 'good'
@@ -1225,6 +1247,10 @@ function ShareDialog({
   const safeStateHint = (() => {
     if (recording.shareExpired) {
       return 'This share link expired. Recreate it to generate a fresh public URL.'
+    }
+
+    if (recording.shareWasRevoked) {
+      return 'This share link was revoked. Create a fresh link to share again.'
     }
 
     if (hasActiveShare) {

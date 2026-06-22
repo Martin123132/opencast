@@ -220,8 +220,7 @@ test('revokes a shared link, blocks old guest links, and recreates', async ({ pa
 
   await shareDialog.getByRole('button', { name: 'Revoke' }).click()
   await expect(shareDialog.getByText('Share link revoked.')).toBeVisible()
-  await expect(shareDialog.getByText('No shared link yet')).toBeVisible()
-  await expect(shareDialog.getByText('No active public link. Create one from this recording.')).toBeVisible()
+  await expect(shareDialog.getByText('This share link was revoked.')).toBeVisible()
   await expect(shareDialog.getByRole('link', { name: 'View as guest' })).toBeHidden()
 
   await page.goto(guestHref!)
@@ -231,8 +230,8 @@ test('revokes a shared link, blocks old guest links, and recreates', async ({ pa
   await expect(selected.getByRole('button', { name: 'Share' })).toBeVisible()
   await expect(selected.getByRole('button', { name: 'Unshare' })).toBeHidden()
   await selected.getByRole('button', { name: 'Share' }).click()
-  await expect(shareDialog.getByRole('button', { name: 'Create link' })).toBeVisible()
-  await shareDialog.getByRole('button', { name: 'Create link' }).click()
+  await expect(shareDialog.getByRole('button', { name: 'Recreate link' })).toBeVisible()
+  await shareDialog.getByRole('button', { name: 'Recreate link' }).click()
   await expect(shareDialog.getByText('/s/')).toBeVisible()
 
   const recreatedHref = await shareDialog.getByRole('link', { name: 'View as guest' }).getAttribute('href')
@@ -247,8 +246,8 @@ test('revokes a shared link, blocks old guest links, and recreates', async ({ pa
   await expect(selected.getByRole('button', { name: 'Unshare' })).toBeHidden()
 
   await selected.getByRole('button', { name: 'Share' }).click()
-  await expect(shareDialog.getByRole('button', { name: 'Create link' })).toBeVisible()
-  await shareDialog.getByRole('button', { name: 'Create link' }).click()
+  await expect(shareDialog.getByRole('button', { name: 'Recreate link' })).toBeVisible()
+  await shareDialog.getByRole('button', { name: 'Recreate link' }).click()
   await expect(shareDialog.getByText('/s/')).toBeVisible()
   await expect(shareDialog.getByText('Share link active')).toBeVisible()
   await expect(shareDialog.getByRole('button', { name: 'Update link' })).toBeVisible()

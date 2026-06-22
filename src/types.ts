@@ -8,6 +8,7 @@ export type Recording = {
   durationMs: number | null
   shareToken: string | null
   shareExpiresAt: string | null
+  shareWasRevoked: boolean
   shareDownloadEnabled: boolean
   sharePasswordProtected: boolean
   shareExpired: boolean

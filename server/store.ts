@@ -18,6 +18,7 @@ export type Recording = {
   durationMs: number | null
   shareToken: string | null
   shareExpiresAt: string | null
+  shareWasRevoked: boolean
   shareDownloadEnabled: boolean
   sharePasswordHash: string | null
   sharePasswordSalt: string | null
@@ -92,6 +93,7 @@ export async function saveRecording({
     durationMs,
     shareToken: null,
     shareExpiresAt: null,
+    shareWasRevoked: false,
     shareDownloadEnabled: true,
     sharePasswordHash: null,
     sharePasswordSalt: null,
@@ -159,6 +161,7 @@ export async function createShare(id: string, settings: ShareSettingsInput = {})
     recording.shareToken = nanoid(20)
   }
 
+  recording.shareWasRevoked = false
   await applyShareSettings(recording, settings)
   recording.updatedAt = new Date().toISOString()
   await writeIndex(index)
@@ -176,6 +179,7 @@ export async function revokeShare(id: string) {
 
   recording.shareToken = null
   recording.shareExpiresAt = null
+  recording.shareWasRevoked = true
   recording.shareDownloadEnabled = true
   recording.sharePasswordHash = null
   recording.sharePasswordSalt = null
@@ -230,6 +234,7 @@ function publicRecording(recording: Recording) {
     durationMs: recording.durationMs,
     shareToken: recording.shareToken,
     shareExpiresAt: recording.shareExpiresAt,
+    shareWasRevoked: recording.shareWasRevoked,
     shareDownloadEnabled: recording.shareDownloadEnabled,
     sharePasswordProtected: Boolean(recording.sharePasswordHash),
     shareExpired: isShareExpired(recording),
@@ -295,6 +300,7 @@ function normalizeRecording(recording: Recording) {
   return {
     ...recording,
     shareExpiresAt: recording.shareExpiresAt ?? null,
+    shareWasRevoked: Boolean(recording.shareWasRevoked),
     shareDownloadEnabled:
       typeof recording.shareDownloadEnabled === 'boolean' ? recording.shareDownloadEnabled : true,
     sharePasswordHash: recording.sharePasswordHash ?? null,

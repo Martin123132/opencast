@@ -708,6 +708,11 @@ a:focus-visible {
   background: rgba(15, 118, 110, 0.12);
 }
 
+.row-status.revoked {
+  color: var(--danger);
+  background: rgba(218, 64, 39, 0.08);
+}
+
 .recording-row.selected {
   border-color: rgba(15, 118, 110, 0.34);
   background: rgba(15, 118, 110, 0.08);
