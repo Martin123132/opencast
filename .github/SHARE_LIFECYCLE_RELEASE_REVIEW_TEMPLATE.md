@@ -20,6 +20,9 @@ share access behavior.
 - [ ] CI link recorded:
   - https://github.com/Martin123132/opencast/actions/runs/...
 
+Optional helper:
+- Generate a prefilled draft via `npm run evidence:share-lifecycle`.
+
 ## Share lifecycle evidence
 
 - [ ] Create path validated (recording → create share link)

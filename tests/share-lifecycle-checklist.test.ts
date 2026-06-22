@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import os from 'node:os'
 import { test } from 'node:test'
 import path from 'node:path'
+import { writeShareLifecycleEvidenceDraft } from '../scripts/share-lifecycle-evidence.ts'
 
 function assertChecklistContains(text: string, expectedFragments: string[]) {
   const normalized = text.toLowerCase()
@@ -124,4 +126,95 @@ test('release review template captures share lifecycle privacy evidence', async 
     true,
     'README should link the release review evidence template',
   )
+})
+
+test('share lifecycle evidence generator command and ignore location stay wired', async () => {
+  const packagePath = path.resolve(process.cwd(), 'package.json')
+  const gitignorePath = path.resolve(process.cwd(), '.gitignore')
+
+  const packageContents = JSON.parse(await readFile(packagePath, 'utf8'))
+  const gitignore = await readFile(gitignorePath, 'utf8')
+  const readmePath = path.resolve(process.cwd(), 'README.md')
+  const readme = await readFile(readmePath, 'utf8')
+
+  assert.equal(
+    packageContents.scripts['evidence:share-lifecycle'],
+    'tsx scripts/share-lifecycle-evidence.ts',
+    'Package script should point to evidence generator',
+  )
+
+  assert.equal(
+    checkForLink(readme, 'evidence:share-lifecycle'),
+    true,
+    'README should document evidence generator command',
+  )
+
+  assert.ok(gitignore.includes('.evidence'), 'Evidence draft path should be git-ignored')
+})
+
+test('share lifecycle evidence generator creates ignored draft with required sections', async () => {
+  const outputDirectory = await mkdtemp(path.join(os.tmpdir(), 'share-lifecycle-evidence-'))
+  const sourcePath = 'share-lifecycle-evidence'
+  const sourceSha = 'abc1234'
+  const ciUrl = 'https://github.com/Martin123132/opencast/actions/runs/999'
+  const timestamp = '2026-06-22T12:00:00.000Z'
+
+  try {
+    const { filePath, content } = await writeShareLifecycleEvidenceDraft({
+      outputDirectory,
+      sourcePath,
+      sourceSha,
+      ciUrl,
+      checkCommand: 'npm run evidence:share-lifecycle',
+      timestamp,
+    })
+
+    assert.ok(filePath.startsWith(outputDirectory), 'Generated file should be in requested output directory')
+    assert.ok(filePath.endsWith('.md'), 'Generated evidence draft should be markdown')
+
+    assert.ok(
+      content.includes('Share lifecycle coverage'),
+      'Generated evidence should include share lifecycle coverage section',
+    )
+    assert.ok(
+      content.includes('Create path validated'),
+      'Generated evidence should include create path validation',
+    )
+    assert.ok(
+      content.includes('Revoke path validated'),
+      'Generated evidence should include revoke path validation',
+    )
+    assert.ok(
+      content.includes('Reload/persistence path validated'),
+      'Generated evidence should include reload/persistence validation',
+    )
+    assert.ok(
+      content.includes('Recreate path validated'),
+      'Generated evidence should include recreate path validation',
+    )
+    assert.ok(
+      content.includes('Stale-token blocking verified'),
+      'Generated evidence should include stale-token blocking',
+    )
+    assert.ok(
+      content.includes('Owner vs guest expectation'),
+      'Generated evidence should include owner vs guest expectations',
+    )
+    assert.ok(
+      content.includes('Non-leaky guest responses verified'),
+      'Generated evidence should include non-leaky guest response verification',
+    )
+    assert.ok(
+      content.includes('npm run lint'),
+      'Generated evidence should include lint/test/build/e2e required checks',
+    )
+    assert.ok(
+      content.includes('npm run test:e2e'),
+      'Generated evidence should include E2E requirement',
+    )
+    assert.ok(content.includes(ciUrl), 'Generated evidence should include CI URL placeholder/value')
+    assert.ok(content.includes(sourceSha), 'Generated evidence should include source SHA')
+  } finally {
+    await rm(outputDirectory, { force: true, recursive: true })
+  }
 })

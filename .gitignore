@@ -21,6 +21,7 @@ opencast-data
 share-secret.key
 *.webm
 *.mp4
+.evidence
 
 # Editor directories and files
 .vscode/*

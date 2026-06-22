@@ -49,6 +49,7 @@ npm.cmd run lint
 npm.cmd run test
 npm.cmd run build
 npm.cmd run test:e2e
+npm.cmd run evidence:share-lifecycle
 ```
 
 Shared privacy contract:
@@ -74,3 +75,12 @@ Share lifecycle release review evidence:
 
 - [`.github/SHARE_LIFECYCLE_RELEASE_REVIEW_TEMPLATE.md`](./.github/SHARE_LIFECYCLE_RELEASE_REVIEW_TEMPLATE.md)
 - Use this for release-ready sharing changes and to record proof links/results in one place.
+
+Share lifecycle evidence draft generator:
+
+- `npm.cmd run evidence:share-lifecycle`
+- Generates `.evidence/share-lifecycle-evidence-<timestamp>.md` (git-ignored) for sharing behavior release notes.
+- Optional flags:
+  - `--output <path>`: custom output directory
+  - `--source-sha <sha>`: include source commit/branch
+  - `--ci-url <url>`: CI run URL placeholder or value
