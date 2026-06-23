@@ -16,11 +16,10 @@ assignees: ""
 
 - OS:
 - Browser:
-- OpenCast version or commit:
+- ShareFrame version or commit:
 - `OPENCAST_DATA_ROOT`:
 
 ## Evidence
 
 
 ## Notes
-

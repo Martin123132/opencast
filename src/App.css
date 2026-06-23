@@ -790,6 +790,11 @@ a:focus-visible {
   background: rgba(218, 64, 39, 0.08);
 }
 
+.row-status.expired {
+  color: var(--danger);
+  background: rgba(218, 64, 39, 0.08);
+}
+
 .recording-row.selected {
   border-color: rgba(15, 118, 110, 0.34);
   background: rgba(15, 118, 110, 0.08);
@@ -877,6 +882,46 @@ a:focus-visible {
 
 .viewer-panel {
   margin-top: 18px;
+}
+
+.viewer-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin: 10px 0 0;
+  padding: 10px 0;
+  border-block: 1px solid var(--border);
+}
+
+.viewer-facts div {
+  min-width: 0;
+}
+
+.viewer-facts dt {
+  margin: 0 0 3px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1.2;
+}
+
+.viewer-facts dd {
+  margin: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 720;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viewer-guidance {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 680;
+  line-height: 1.4;
 }
 
 .rename-row {
@@ -1253,6 +1298,10 @@ a:focus-visible {
   .row-status {
     grid-column: 2;
     width: fit-content;
+  }
+
+  .viewer-facts {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .countdown-overlay strong {

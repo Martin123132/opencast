@@ -53,6 +53,7 @@ import { useScreenRecorder } from './hooks/useScreenRecorder'
 
 type StudioStep = 'setup' | 'record' | 'review' | 'share' | 'library'
 type LibrarySort = 'newest' | 'title' | 'share'
+type RecordingShareState = 'shared' | 'expired' | 'revoked' | 'private'
 
 type PendingDelete = {
   recording: Recording
@@ -210,6 +211,8 @@ function StudioApp() {
   const isFirstRunActionDisabled =
     setupComplete && !hasReviewDraft && status !== 'idle' && status !== 'error'
   const nextAction = getNextAction(activeStep, status, selectedRecording, hasReviewDraft)
+  const selectedShareState = selectedRecording ? getRecordingShareState(selectedRecording) : 'private'
+  const selectedActiveShareUrl = selectedRecording && selectedShareState === 'shared' ? shareUrl : null
 
   const applyShareDefaults = useCallback((recording: Recording | null) => {
     if (!recording) {
@@ -1048,28 +1051,49 @@ function StudioApp() {
               <div className="viewer-meta">
                 <div>
                   <strong>{selectedRecording.title}</strong>
-                  <small>{formatTime(selectedRecording.durationMs ?? 0)}</small>
+                  <small>Duration {formatTime(selectedRecording.durationMs ?? 0)}</small>
                 </div>
                 <StatusChip
-                  tone={
-                    selectedRecording.shareToken
-                      ? 'good'
-                      : selectedRecording.shareWasRevoked
-                        ? 'bad'
-                        : 'neutral'
-                  }
+                  tone={getShareStateTone(selectedShareState)}
                   icon={
-                    selectedRecording.shareToken ? <Link2 size={15} /> : <Lock size={15} />
+                    selectedShareState === 'shared' ? (
+                      <Link2 size={15} />
+                    ) : selectedShareState === 'expired' ? (
+                      <Clock size={15} />
+                    ) : (
+                      <Lock size={15} />
+                    )
                   }
-                  label={
-                    selectedRecording.shareToken
-                      ? 'Shared'
-                      : selectedRecording.shareWasRevoked
-                        ? 'Revoked'
-                        : 'Private'
-                  }
+                  label={capitalizeShareState(selectedShareState)}
                 />
               </div>
+              <dl className="viewer-facts" aria-label="Recording details">
+                <div>
+                  <dt>Created</dt>
+                  <dd>{formatDate(selectedRecording.createdAt)}</dd>
+                </div>
+                <div>
+                  <dt>Size</dt>
+                  <dd>{formatBytes(selectedRecording.sizeBytes)}</dd>
+                </div>
+                <div>
+                  <dt>Views</dt>
+                  <dd>{selectedRecording.viewCount}</dd>
+                </div>
+                <div>
+                  <dt>Access</dt>
+                  <dd>{selectedRecording.sharePasswordProtected ? 'Password required' : 'No password'}</dd>
+                </div>
+                <div>
+                  <dt>Downloads</dt>
+                  <dd>{selectedRecording.shareDownloadEnabled ? 'Allowed' : 'Playback only'}</dd>
+                </div>
+                <div>
+                  <dt>Link</dt>
+                  <dd>{getRecordingShareSummary(selectedRecording)}</dd>
+                </div>
+              </dl>
+              <p className="viewer-guidance">{getRecordingNextStep(selectedRecording)}</p>
               <div className="rename-row">
                 <input
                   aria-label="Recording title"
@@ -1099,6 +1123,19 @@ function StudioApp() {
                   <Link2 size={16} />
                   Share
                 </button>
+                {selectedActiveShareUrl ? (
+                  <button
+                    className="secondary-button compact"
+                    type="button"
+                    onClick={() => {
+                      void copyText(selectedActiveShareUrl)
+                      setShareStatus('Share link copied.')
+                    }}
+                  >
+                    <Copy size={16} />
+                    Copy link
+                  </button>
+                ) : null}
                 {selectedRecording.shareToken ? (
                   <button
                     className="secondary-button compact"
@@ -1888,7 +1925,11 @@ function formatDate(value: string) {
   }).format(new Date(value))
 }
 
-function getRecordingShareState(recording: Recording) {
+function getRecordingShareState(recording: Recording): RecordingShareState {
+  if (recording.shareToken && recording.shareExpired) {
+    return 'expired'
+  }
+
   if (recording.shareToken) {
     return 'shared'
   }
@@ -1900,8 +1941,56 @@ function getRecordingShareState(recording: Recording) {
   return 'private'
 }
 
-function capitalizeShareState(value: ReturnType<typeof getRecordingShareState>) {
+function capitalizeShareState(value: RecordingShareState) {
   return `${value.slice(0, 1).toUpperCase()}${value.slice(1)}`
+}
+
+function getRecordingShareSummary(recording: Recording) {
+  const shareState = getRecordingShareState(recording)
+
+  if (shareState === 'shared') {
+    return 'Active link'
+  }
+
+  if (shareState === 'expired') {
+    return 'Expired link'
+  }
+
+  if (shareState === 'revoked') {
+    return 'Previously revoked'
+  }
+
+  return 'Not shared'
+}
+
+function getRecordingNextStep(recording: Recording) {
+  const shareState = getRecordingShareState(recording)
+
+  if (shareState === 'shared') {
+    return 'Next: copy the guest link, review as guest, or unshare when access should end.'
+  }
+
+  if (shareState === 'expired') {
+    return 'Next: recreate the expired link before sending this recording again.'
+  }
+
+  if (shareState === 'revoked') {
+    return 'Next: create a fresh link when this recording should be shared again.'
+  }
+
+  return 'Next: create a guest link when this take is ready to share.'
+}
+
+function getShareStateTone(value: RecordingShareState): 'good' | 'bad' | 'neutral' {
+  if (value === 'shared') {
+    return 'good'
+  }
+
+  if (value === 'expired' || value === 'revoked') {
+    return 'bad'
+  }
+
+  return 'neutral'
 }
 
 function compareLibraryRecordings(left: Recording, right: Recording, sort: LibrarySort) {
@@ -1920,16 +2009,20 @@ function compareLibraryRecordings(left: Recording, right: Recording, sort: Libra
   return right.createdAt.localeCompare(left.createdAt)
 }
 
-function getShareStateRank(value: ReturnType<typeof getRecordingShareState>) {
+function getShareStateRank(value: RecordingShareState) {
   if (value === 'shared') {
     return 0
   }
 
-  if (value === 'revoked') {
+  if (value === 'expired') {
     return 1
   }
 
-  return 2
+  if (value === 'revoked') {
+    return 2
+  }
+
+  return 3
 }
 
 function compareText(left: string, right: string) {

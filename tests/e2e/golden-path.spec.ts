@@ -251,6 +251,12 @@ test('shows library recordings, validates rename, and opens the share modal', as
     'Golden path fixture',
   )
   await expect(selected.getByRole('button', { name: 'Rename' })).toBeDisabled()
+  await expect(selected.getByLabel('Recording details').getByText('Created')).toBeVisible()
+  await expect(selected.getByLabel('Recording details').getByText('Size')).toBeVisible()
+  await expect(selected.getByLabel('Recording details').getByText('Views')).toBeVisible()
+  await expect(
+    selected.getByText('Next: create a guest link when this take is ready to share.'),
+  ).toBeVisible()
 
   const renamedTitle = 'Golden path fixture renamed'
   const titleInput = selected.getByRole('textbox', { name: 'Recording title' })
@@ -283,8 +289,16 @@ test('shows library recordings, validates rename, and opens the share modal', as
   await page.getByRole('button', { name: 'Create link' }).click()
   await expect(page.getByText('/s/')).toBeVisible()
   await expect(page.getByRole('link', { name: 'View as guest' })).toBeVisible()
-
   await saveSmokeScreenshot(page, 'share-modal.png')
+
+  await page.getByRole('button', { name: 'Close share dialog' }).click()
+  await expect(
+    selected.getByText('Next: copy the guest link, review as guest, or unshare when access should end.'),
+  ).toBeVisible()
+  await expect(selected.getByRole('button', { name: 'Copy link' })).toBeVisible()
+  await selected.getByRole('button', { name: 'Copy link' }).click()
+  await expect(selected.getByText('Share link copied.')).toBeVisible()
+
   expect(recording.id).toBeTruthy()
   expect(consoleMessages()).toEqual([])
 })
@@ -374,7 +388,7 @@ test('revokes a shared link, blocks old guest links, and recreates', async ({ pa
 
   await page.goto('/')
   await page.reload()
-  await expect(selected.getByText('Revoked')).toBeVisible()
+  await expect(selected.getByText('Revoked', { exact: true })).toBeVisible()
   await expect(selected.getByRole('button', { name: 'Share' })).toBeVisible()
 
   await selected.getByRole('button', { name: 'Share' }).click()
@@ -598,7 +612,7 @@ async function createRecording(request: APIRequestContext, title: string) {
       video: {
         name: 'fixture.webm',
         mimeType: 'video/webm',
-        buffer: Buffer.from('OpenCast E2E fixture'),
+        buffer: Buffer.from('ShareFrame E2E fixture'),
       },
     },
   })

@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Propose a product-grade improvement to OpenCast.
+about: Propose a product-grade improvement to ShareFrame.
 title: "[Feature]: "
 labels: enhancement
 assignees: ""
@@ -16,4 +16,3 @@ assignees: ""
 
 
 ## Risks or constraints
-
