@@ -819,10 +819,23 @@ function StudioApp() {
                 Time: {formatTime(elapsedMs)}
               </span>
             </div>
-            <div className="capture-channel-summary" aria-label="Capture channel status">
-              <span>{screenReady ? 'Screen source is armed' : 'Screen source is off'}</span>
-              <span>{micEnabled ? 'Mic capture on' : 'Mic capture off'}</span>
-              <span>{cameraEnabled ? 'Camera overlay on' : 'Camera overlay off'}</span>
+            <div className="capture-input-status" aria-label="Capture input status">
+              <span className={`input-status ${screenReady ? 'ready' : 'missing'}`} title="Screen source">
+                <MonitorUp size={16} />
+                Screen: {screenReady ? 'Selected' : 'Not selected'}
+              </span>
+              <span className={`input-status ${micEnabled ? 'ready' : 'missing'}`} title="Microphone capture">
+                <Mic size={16} />
+                Mic: {micEnabled ? 'Enabled' : 'Disabled'}
+              </span>
+              <span className={`input-status ${cameraEnabled ? 'ready' : 'missing'}`} title="Camera overlay">
+                <Video size={16} />
+                Camera: {cameraEnabled ? 'Enabled' : 'Disabled'}
+              </span>
+              <span className={`input-status ${status === 'error' ? 'missing' : 'ready'}`}>
+                <Radio size={16} />
+                Capture: {status === 'error' ? 'Needs attention' : 'Ready'}
+              </span>
             </div>
 
             {canClearCaptureState ? (
