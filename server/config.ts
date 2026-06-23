@@ -1,3 +1,4 @@
+import { assertDDrivePath, isDDrivePath as isDDriveStoragePath } from '../scripts/path-guards'
 import path from 'node:path'
 
 const defaultDataRoot = 'D:\\open-source\\opencast-data'
@@ -11,17 +12,13 @@ export const appConfig = {
 }
 
 export function resolveDataRoot(value: string) {
-  const resolved = path.win32.resolve(value)
-
-  if (!isDDrivePath(resolved)) {
-    throw new Error(`OPENCAST_DATA_ROOT must stay on D:. Refusing to use ${resolved}`)
-  }
+  const resolved = assertDDrivePath(value, 'OPENCAST_DATA_ROOT')
 
   return resolved
 }
 
 export function isDDrivePath(value: string) {
-  return path.win32.resolve(value).toLowerCase().startsWith('d:\\')
+  return isDDriveStoragePath(value)
 }
 
 export const storagePaths = {

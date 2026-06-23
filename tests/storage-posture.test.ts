@@ -20,6 +20,7 @@ const sharedPathEntries = [
 const deliberateNegativeTestFiles = new Set([
   'tests/config.test.ts',
   'tests/share-lifecycle-checklist.test.ts',
+  'tests/path-guards.test.ts',
 ])
 const ignoredDirectoryNames = new Set([
   '.cache',

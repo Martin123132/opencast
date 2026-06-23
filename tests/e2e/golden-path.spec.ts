@@ -1,10 +1,17 @@
 import { mkdir, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { assertDDrivePath } from '../../scripts/path-guards'
 
-const e2eDataRoot = process.env.OPENCAST_E2E_DATA_ROOT ?? 'D:\\open-source\\opencast-e2e-data'
+const e2eDataRoot = assertDDrivePath(
+  process.env.OPENCAST_E2E_DATA_ROOT ?? 'D:\\open-source\\opencast-e2e-data',
+  'OPENCAST_E2E_DATA_ROOT',
+)
 const screenshotRoot = path.join(
-  process.env.OPENCAST_E2E_ARTIFACTS ?? 'D:\\open-source\\.temp\\opencast-e2e',
+  assertDDrivePath(
+    process.env.OPENCAST_E2E_ARTIFACTS ?? 'D:\\open-source\\.temp\\opencast-e2e',
+    'OPENCAST_E2E_ARTIFACTS',
+  ),
   'screenshots',
 )
 
