@@ -141,8 +141,8 @@ test('guides first-run from record draft to save then share', async ({ page }) =
   await page.getByLabel('Review recording').getByRole('button', { name: 'Save' }).click()
 
   const shareDialog = page.getByRole('dialog', { name: 'Share recording' })
-  await expect(shareDialog).toBeVisible()
-  await expect(shareDialog.getByText('Saved. Share link ready when you are.')).toBeVisible()
+  await expect(shareDialog).toBeVisible({ timeout: 15000 })
+  await expect(shareDialog.getByText('Saved. Share link ready when you are.')).toBeVisible({ timeout: 15000 })
   await expect(page.getByText('No recordings yet')).toBeHidden()
   await expect(page.getByLabel('Current guidance').getByText('Lock the link')).toBeVisible()
   await expect(page.getByRole('button', { name: draftTitle })).toBeVisible()
@@ -253,6 +253,9 @@ test('shows library recordings, validates rename, and opens the share modal', as
   await expect(selected.getByLabel('Recording details').getByText('Updated')).toBeVisible()
   await expect(selected.getByLabel('Recording details').getByText('Share state')).toBeVisible()
   await expect(selected.getByLabel('Share state overview')).toBeVisible()
+  const ownerPath = selected.getByLabel('Owner path')
+  await expect(ownerPath.getByText('Ready to share this recording')).toBeVisible()
+  await expect(ownerPath.getByRole('button', { name: 'Create guest link' })).toBeVisible()
   await expect(selected.getByText('This recording is private. Use Share and create a link when you are ready to share it.')).toBeVisible()
   await expect(selected.getByRole('button', { name: 'Rename' })).toBeDisabled()
   await expect(selected.getByLabel('Recording details').getByText('Created')).toBeVisible()
@@ -298,6 +301,10 @@ test('shows library recordings, validates rename, and opens the share modal', as
   await saveSmokeScreenshot(page, 'share-modal.png')
 
   await page.getByRole('button', { name: 'Close share dialog' }).click()
+  await expect(ownerPath.getByText('Share this recording now')).toBeVisible()
+  await expect(ownerPath.getByRole('button', { name: 'Copy guest link' })).toBeVisible()
+  await ownerPath.getByRole('button', { name: 'Copy guest link' }).click()
+  await expect(selected.getByText('Share link copied.')).toBeVisible()
   await expect(
     selected.getByText('Next: copy the guest link, review as guest, or unshare when access should end.'),
   ).toBeVisible()

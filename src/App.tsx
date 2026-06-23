@@ -221,6 +221,9 @@ function StudioApp() {
   const selectedShareState = selectedRecording ? getRecordingShareState(selectedRecording) : 'private'
   const selectedActiveShareUrl = selectedRecording && selectedShareState === 'shared' ? shareUrl : null
   const selectedShareHint = selectedRecording ? getRecordingShareOwnerHint(selectedRecording) : null
+  const selectedOwnerPathAction = selectedRecording
+    ? getRecordingOwnerPathAction(selectedRecording, selectedActiveShareUrl)
+    : null
 
   const applyShareDefaults = useCallback((recording: Recording | null) => {
     if (!recording) {
@@ -1105,6 +1108,30 @@ function StudioApp() {
                 />
                 <p className="viewer-share-line">{selectedShareHint}</p>
               </div>
+              {selectedOwnerPathAction ? (
+                <section className="owner-path-card" aria-label="Owner path">
+                  <div className="owner-path-copy">
+                    <strong>{selectedOwnerPathAction.label}</strong>
+                    <p>{selectedOwnerPathAction.hint}</p>
+                  </div>
+                  <button
+                    className="primary-button compact"
+                    type="button"
+                    onClick={() => {
+                      if (selectedOwnerPathAction.type === 'copy-link' && selectedActiveShareUrl) {
+                        void copyText(selectedActiveShareUrl)
+                        setShareStatus('Share link copied.')
+                        return
+                      }
+
+                      applyShareDefaults(selectedRecording)
+                      setShareDialogOpen(true)
+                    }}
+                  >
+                    {selectedOwnerPathAction.actionLabel}
+                  </button>
+                </section>
+              ) : null}
               <dl className="viewer-facts" aria-label="Recording details">
                 <div>
                   <dt>Created</dt>
@@ -2112,6 +2139,38 @@ function getRecordingNextStep(recording: Recording) {
   }
 
   return 'Next: create a guest link when this take is ready to share.'
+}
+
+function getRecordingOwnerPathAction(
+  recording: Recording,
+  activeShareUrl: string | null,
+): { label: string; hint: string; actionLabel: string; type: 'copy-link' | 'open-share-dialog' } {
+  const shareState = getRecordingShareState(recording)
+
+  if (shareState === 'shared' && activeShareUrl) {
+    return {
+      label: 'Share this recording now',
+      hint: 'Copy the guest link and send it to your audience.',
+      actionLabel: 'Copy guest link',
+      type: 'copy-link',
+    }
+  }
+
+  if (shareState === 'expired' || shareState === 'revoked') {
+    return {
+      label: 'Share path reset needed',
+      hint: 'Recreate or refresh the link before sending this recording again.',
+      actionLabel: 'Recreate guest link',
+      type: 'open-share-dialog',
+    }
+  }
+
+  return {
+    label: 'Ready to share this recording',
+    hint: 'Create a link when you are ready to send it out.',
+    actionLabel: 'Create guest link',
+    type: 'open-share-dialog',
+  }
 }
 
 function getRecordingShareOwnerHint(recording: Recording) {

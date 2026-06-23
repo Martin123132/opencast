@@ -1011,6 +1011,35 @@ a:focus-visible {
   line-height: 1.35;
 }
 
+.owner-path-card {
+  margin: 0 0 10px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(15, 118, 110, 0.28);
+  border-radius: 8px;
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.owner-path-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.owner-path-copy strong {
+  display: block;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.owner-path-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .share-box {
   display: grid;
   gap: 10px;
