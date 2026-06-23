@@ -219,6 +219,7 @@ test('guides live recording controls through pause, resume, and discard', async 
   await expect(captureStatus.getByText('Mic: On')).toBeVisible()
   await expect(captureStatus.getByText('Camera: Off')).toBeVisible()
   await expect(captureStatus.getByText(/Time: 00:00/)).toBeVisible()
+  await expect(captureStatus.getByText('Capture: Source required')).toBeVisible()
   await expect(captureInputStatus.getByText('Screen: Not selected')).toBeVisible()
   await expect(captureInputStatus.getByText('Mic: Enabled')).toBeVisible()
   await expect(captureInputStatus.getByText('Camera: Disabled')).toBeVisible()

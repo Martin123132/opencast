@@ -802,7 +802,7 @@ function StudioApp() {
               onClick={toggleCamera}
             />
             <div className="capture-readout" aria-label="Capture status">
-              <span className={`readout-pill ${screenReady ? 'ready' : ''}`}>
+              <span className={`readout-pill ${screenReady ? 'ready' : 'warning'}`}>
                 <Radio size={16} />
                 Source: {screenReady ? 'Armed' : 'None'}
               </span>
@@ -813,6 +813,13 @@ function StudioApp() {
               <span className={`readout-pill ${cameraEnabled ? 'ready' : ''}`}>
                 <Camera size={16} />
                 Camera: {cameraEnabled ? 'On' : 'Off'}
+              </span>
+              <span
+                className={`readout-pill ${screenReady ? 'ready' : status === 'error' ? 'warning' : ''}`}
+                title="Capture readiness"
+              >
+                <Radio size={16} />
+                Capture: {status === 'error' ? 'Needs attention' : screenReady ? 'Ready' : 'Source required'}
               </span>
               <span className="readout-pill" title="Elapsed time">
                 <Clock size={16} />
