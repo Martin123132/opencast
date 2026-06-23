@@ -215,6 +215,12 @@ test('guides live recording controls through pause, resume, and discard', async 
   await expect(captureStatus.getByText('Mic: On')).toBeVisible()
   await expect(captureStatus.getByText('Camera: Off')).toBeVisible()
   await expect(captureStatus.getByText(/Time: 00:00/)).toBeVisible()
+  await page.getByRole('button', { name: 'Camera' }).click()
+  await expect(captureStatus.getByText('Camera: On')).toBeVisible()
+  await page.getByRole('button', { name: 'Clear capture setup' }).click()
+  await expect(captureStatus.getByText('Mic: Off')).toBeVisible()
+  await expect(captureStatus.getByText('Camera: Off')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Clear capture setup' })).toBeHidden()
 
   await page.getByRole('button', { name: 'Record', exact: true }).click()
   await expect(page.getByText('Get ready')).toBeVisible()

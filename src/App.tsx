@@ -94,6 +94,8 @@ function StudioApp() {
     resetRecording,
     toggleMic,
     toggleCamera,
+    setMicEnabled,
+    setCameraEnabled,
   } = useScreenRecorder()
   const [recordings, setRecordings] = useState<Recording[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -224,6 +226,8 @@ function StudioApp() {
   const selectedOwnerPathAction = selectedRecording
     ? getRecordingOwnerPathAction(selectedRecording, selectedActiveShareUrl)
     : null
+  const canClearCaptureState =
+    (status === 'idle' || status === 'error' || status === 'ready') && (micEnabled || cameraEnabled)
 
   const applyShareDefaults = useCallback((recording: Recording | null) => {
     if (!recording) {
@@ -356,6 +360,11 @@ function StudioApp() {
 
     void startRecording()
   }, [recordingBlob, resetRecording, startRecording])
+
+  const handleClearCaptureState = useCallback(() => {
+    setMicEnabled(false)
+    setCameraEnabled(false)
+  }, [setMicEnabled, setCameraEnabled])
 
   const handleFirstRunAction = useCallback(() => {
     if (!setupComplete) {
@@ -809,6 +818,18 @@ function StudioApp() {
               <span>{micEnabled ? 'Mic capture on' : 'Mic capture off'}</span>
               <span>{cameraEnabled ? 'Camera overlay on' : 'Camera overlay off'}</span>
             </div>
+
+            {canClearCaptureState ? (
+              <button
+                className="secondary-button compact"
+                type="button"
+                onClick={handleClearCaptureState}
+                title="Clear mic and camera selection to return to defaults"
+              >
+                <X size={16} />
+                Clear capture setup
+              </button>
+            ) : null}
 
             {status === 'recording' ? (
               <>

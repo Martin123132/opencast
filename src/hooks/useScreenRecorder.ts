@@ -379,6 +379,8 @@ export function useScreenRecorder() {
     resetRecording,
     toggleMic: () => setMicEnabled((enabled) => !enabled),
     toggleCamera: () => setCameraEnabled((enabled) => !enabled),
+    setMicEnabled: (value: boolean) => setMicEnabled(value),
+    setCameraEnabled: (value: boolean) => setCameraEnabled(value),
   }
 }
 
