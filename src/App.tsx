@@ -1081,6 +1081,10 @@ function StudioApp() {
                   <dd>{selectedRecording.viewCount}</dd>
                 </div>
                 <div>
+                  <dt>Expiry</dt>
+                  <dd>{formatShareExpirySummary(selectedRecording.shareExpiresAt ?? '')}</dd>
+                </div>
+                <div>
                   <dt>Access</dt>
                   <dd>{selectedRecording.sharePasswordProtected ? 'Password required' : 'No password'}</dd>
                 </div>
@@ -1135,6 +1139,12 @@ function StudioApp() {
                     <Copy size={16} />
                     Copy link
                   </button>
+                ) : null}
+                {selectedActiveShareUrl ? (
+                  <a className="secondary-link compact" href={selectedActiveShareUrl} target="_blank" rel="noreferrer">
+                    <Eye size={16} />
+                    View as guest
+                  </a>
                 ) : null}
                 {selectedRecording.shareToken ? (
                   <button
@@ -1618,6 +1628,7 @@ function ShareView({ token }: { token: string }) {
               controls
               controlsList={recording.shareDownloadEnabled ? undefined : 'nodownload'}
               playsInline
+              preload="none"
               autoPlay={false}
             />
             <div className="shared-meta">

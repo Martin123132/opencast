@@ -254,6 +254,8 @@ test('shows library recordings, validates rename, and opens the share modal', as
   await expect(selected.getByLabel('Recording details').getByText('Created')).toBeVisible()
   await expect(selected.getByLabel('Recording details').getByText('Size')).toBeVisible()
   await expect(selected.getByLabel('Recording details').getByText('Views')).toBeVisible()
+  await expect(selected.getByLabel('Recording details').getByText('Expiry', { exact: true })).toBeVisible()
+  await expect(selected.getByLabel('Recording details').getByText('No expiry')).toBeVisible()
   await expect(
     selected.getByText('Next: create a guest link when this take is ready to share.'),
   ).toBeVisible()
@@ -288,7 +290,7 @@ test('shows library recordings, validates rename, and opens the share modal', as
   await expect(shareDialog.getByText('No shared link yet')).toBeVisible()
   await page.getByRole('button', { name: 'Create link' }).click()
   await expect(page.getByText('/s/')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'View as guest' })).toBeVisible()
+  await expect(shareDialog.getByRole('link', { name: 'View as guest' })).toBeVisible()
   await saveSmokeScreenshot(page, 'share-modal.png')
 
   await page.getByRole('button', { name: 'Close share dialog' }).click()
@@ -298,6 +300,9 @@ test('shows library recordings, validates rename, and opens the share modal', as
   await expect(selected.getByRole('button', { name: 'Copy link' })).toBeVisible()
   await selected.getByRole('button', { name: 'Copy link' }).click()
   await expect(selected.getByText('Share link copied.')).toBeVisible()
+  const selectedGuestLink = selected.getByRole('link', { name: 'View as guest' })
+  await expect(selectedGuestLink).toBeVisible()
+  await expect(selectedGuestLink).toHaveAttribute('href', /\/s\//)
 
   expect(recording.id).toBeTruthy()
   expect(consoleMessages()).toEqual([])
