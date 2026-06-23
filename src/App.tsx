@@ -220,6 +220,7 @@ function StudioApp() {
     cameraEnabled,
     countdown,
   )
+  const recorderNextHint = getRecorderNextHint(status)
   const selectedShareState = selectedRecording ? getRecordingShareState(selectedRecording) : 'private'
   const selectedActiveShareUrl = selectedRecording && selectedShareState === 'shared' ? shareUrl : null
   const selectedShareHint = selectedRecording ? getRecordingShareOwnerHint(selectedRecording) : null
@@ -754,6 +755,11 @@ function StudioApp() {
             />
             <p>{recorderHint.detail}</p>
           </div>
+          {recorderNextHint ? (
+            <p className="recorder-next-hint" aria-label="Recorder next-step hint" role="note" aria-live="polite">
+              <span>Next:</span> {recorderNextHint}
+            </p>
+          ) : null}
 
           <div className="stage">
             <canvas ref={canvasRef} className="recording-canvas" />
@@ -1922,6 +1928,26 @@ function getRecorderHint(
     label: 'Ready',
     detail: 'Press Record to capture your first take.',
   }
+}
+
+function getRecorderNextHint(status: RecorderStatus) {
+  if (status === 'countdown') {
+    return 'Keep source and audio/video channels as-is while countdown completes. Cancel to adjust setup.'
+  }
+
+  if (status === 'recording') {
+    return 'Pause for a break, or stop when you are ready to review and save.'
+  }
+
+  if (status === 'paused') {
+    return 'Resume for more time, or stop to open the review draft.'
+  }
+
+  if (status === 'ready') {
+    return 'Save this draft to add it to your library, or discard to retry.'
+  }
+
+  return null
 }
 
 function isCaptureActive(status: RecorderStatus) {

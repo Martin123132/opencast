@@ -138,6 +138,9 @@ test('guides first-run from record draft to save then share', async ({ page }) =
   await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible()
   await page.getByRole('button', { name: 'Stop' }).click()
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()
+  await expect(page.getByLabel('Recorder next-step hint')).toContainText(
+    'Save this draft to add it to your library, or discard to retry.',
+  )
   await expect(page.getByLabel('Current guidance').getByText('Save this draft')).toBeVisible()
   const draftStatus = page.getByLabel('Draft status')
   await expect(draftStatus.getByText('Unsaved local draft')).toBeVisible()
@@ -224,15 +227,24 @@ test('guides live recording controls through pause, resume, and discard', async 
 
   await page.getByRole('button', { name: 'Record', exact: true }).click()
   await expect(page.getByText('Get ready')).toBeVisible()
+  await expect(page.getByLabel('Recorder next-step hint')).toContainText(
+    'Keep source and audio/video channels as-is while countdown completes.',
+  )
   await expect(captureStatus.getByText('Source: Armed')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible()
 
   await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible()
   await page.getByRole('button', { name: 'Pause' }).click()
+  await expect(page.getByLabel('Recorder next-step hint')).toContainText(
+    'Resume for more time, or stop to open the review draft.',
+  )
   await expect(page.locator('.pause-overlay').getByText('Paused')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Resume' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Resume' }).click()
+  await expect(page.getByLabel('Recorder next-step hint')).toContainText(
+    'Pause for a break, or stop when you are ready to review and save.',
+  )
   await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Cancel' }).click()
