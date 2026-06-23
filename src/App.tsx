@@ -220,6 +220,7 @@ function StudioApp() {
   )
   const selectedShareState = selectedRecording ? getRecordingShareState(selectedRecording) : 'private'
   const selectedActiveShareUrl = selectedRecording && selectedShareState === 'shared' ? shareUrl : null
+  const selectedShareHint = selectedRecording ? getRecordingShareOwnerHint(selectedRecording) : null
 
   const applyShareDefaults = useCallback((recording: Recording | null) => {
     if (!recording) {
@@ -1088,10 +1089,30 @@ function StudioApp() {
                   label={capitalizeShareState(selectedShareState)}
                 />
               </div>
+              <div className="viewer-share-overview" aria-label="Share state overview">
+                <StatusChip
+                  tone={getShareStateTone(selectedShareState)}
+                  icon={
+                    selectedShareState === 'shared' ? (
+                      <Link2 size={15} />
+                    ) : selectedShareState === 'expired' ? (
+                      <Clock size={15} />
+                    ) : (
+                      <Lock size={15} />
+                    )
+                  }
+                  label={getRecordingShareSummary(selectedRecording)}
+                />
+                <p className="viewer-share-line">{selectedShareHint}</p>
+              </div>
               <dl className="viewer-facts" aria-label="Recording details">
                 <div>
                   <dt>Created</dt>
                   <dd>{formatDate(selectedRecording.createdAt)}</dd>
+                </div>
+                <div>
+                  <dt>Updated</dt>
+                  <dd>{formatDate(selectedRecording.updatedAt)}</dd>
                 </div>
                 <div>
                   <dt>Size</dt>
@@ -1116,6 +1137,10 @@ function StudioApp() {
                 <div>
                   <dt>Link</dt>
                   <dd>{getRecordingShareSummary(selectedRecording)}</dd>
+                </div>
+                <div>
+                  <dt>Share state</dt>
+                  <dd>{capitalizeShareState(selectedShareState)}</dd>
                 </div>
               </dl>
               <p className="viewer-guidance">{getRecordingNextStep(selectedRecording)}</p>
@@ -2087,6 +2112,24 @@ function getRecordingNextStep(recording: Recording) {
   }
 
   return 'Next: create a guest link when this take is ready to share.'
+}
+
+function getRecordingShareOwnerHint(recording: Recording) {
+  const shareState = getRecordingShareState(recording)
+
+  if (shareState === 'shared') {
+    return 'Active guest link is ready. Use Copy link for instant sharing, or revoke when access should stop.'
+  }
+
+  if (shareState === 'expired') {
+    return 'This share link expired. Recreate it to generate a fresh guest link.'
+  }
+
+  if (shareState === 'revoked') {
+    return 'This recording had a link that was revoked. Recreate when you want to share again.'
+  }
+
+  return 'This recording is private. Use Share and create a link when you are ready to share it.'
 }
 
 function getShareStateTone(value: RecordingShareState): 'good' | 'bad' | 'neutral' {

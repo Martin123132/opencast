@@ -250,6 +250,10 @@ test('shows library recordings, validates rename, and opens the share modal', as
   await expect(selected.getByRole('textbox', { name: 'Recording title' })).toHaveValue(
     'Golden path fixture',
   )
+  await expect(selected.getByLabel('Recording details').getByText('Updated')).toBeVisible()
+  await expect(selected.getByLabel('Recording details').getByText('Share state')).toBeVisible()
+  await expect(selected.getByLabel('Share state overview')).toBeVisible()
+  await expect(selected.getByText('This recording is private. Use Share and create a link when you are ready to share it.')).toBeVisible()
   await expect(selected.getByRole('button', { name: 'Rename' })).toBeDisabled()
   await expect(selected.getByLabel('Recording details').getByText('Created')).toBeVisible()
   await expect(selected.getByLabel('Recording details').getByText('Size')).toBeVisible()
@@ -393,7 +397,7 @@ test('revokes a shared link, blocks old guest links, and recreates', async ({ pa
 
   await page.goto('/')
   await page.reload()
-  await expect(selected.getByText('Revoked', { exact: true })).toBeVisible()
+  await expect(selected.getByLabel('Recording details').getByText('Revoked', { exact: true })).toBeVisible()
   await expect(selected.getByRole('button', { name: 'Share' })).toBeVisible()
 
   await selected.getByRole('button', { name: 'Share' }).click()
