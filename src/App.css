@@ -405,6 +405,21 @@
   line-height: 0.9;
 }
 
+.recorder-status-banner {
+  display: grid;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  margin: 6px 0 10px;
+}
+
+.recorder-status-banner p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .countdown-overlay span,
 .pause-overlay span {
   font-size: 14px;
@@ -578,6 +593,27 @@ button {
 
 .readout-pill svg {
   flex: 0 0 auto;
+}
+
+.capture-channel-summary {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.capture-channel-summary span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .icon-button {
@@ -1238,6 +1274,15 @@ a:focus-visible {
   .capture-readout {
     margin-left: 0;
   }
+
+  .recorder-status-banner {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .capture-channel-summary {
+    gap: 6px;
+  }
 }
 
 @media (max-width: 620px) {
@@ -1318,5 +1363,16 @@ a:focus-visible {
 
   .share-link-row .secondary-button {
     width: 100%;
+  }
+
+  .recorder-status-banner p {
+    font-size: 11px;
+  }
+
+  .capture-channel-summary {
+    margin-top: 4px;
+    padding: 8px;
+    grid-template-columns: 1fr;
+    font-size: 11px;
   }
 }

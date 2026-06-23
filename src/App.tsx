@@ -211,6 +211,13 @@ function StudioApp() {
   const isFirstRunActionDisabled =
     setupComplete && !hasReviewDraft && status !== 'idle' && status !== 'error'
   const nextAction = getNextAction(activeStep, status, selectedRecording, hasReviewDraft)
+  const recorderHint = getRecorderHint(
+    status,
+    screenReady,
+    micEnabled,
+    cameraEnabled,
+    countdown,
+  )
   const selectedShareState = selectedRecording ? getRecordingShareState(selectedRecording) : 'private'
   const selectedActiveShareUrl = selectedRecording && selectedShareState === 'shared' ? shareUrl : null
 
@@ -726,6 +733,15 @@ function StudioApp() {
             <span className={`status-dot ${status}`} aria-hidden="true" />
           </div>
 
+          <div className="recorder-status-banner" aria-label="Recording status">
+            <StatusChip
+              tone={status === 'recording' ? 'bad' : status === 'paused' ? 'bad' : 'neutral'}
+              icon={<Radio size={14} />}
+              label={recorderHint.label}
+            />
+            <p>{recorderHint.detail}</p>
+          </div>
+
           <div className="stage">
             <canvas ref={canvasRef} className="recording-canvas" />
             {status === 'idle' && !previewUrl ? (
@@ -783,6 +799,11 @@ function StudioApp() {
                 <Clock size={16} />
                 Time: {formatTime(elapsedMs)}
               </span>
+            </div>
+            <div className="capture-channel-summary" aria-label="Capture channel status">
+              <span>{screenReady ? 'Screen source is armed' : 'Screen source is off'}</span>
+              <span>{micEnabled ? 'Mic capture on' : 'Mic capture off'}</span>
+              <span>{cameraEnabled ? 'Camera overlay on' : 'Camera overlay off'}</span>
             </div>
 
             {status === 'recording' ? (
@@ -1752,6 +1773,82 @@ function statusLabel(status: RecorderStatus) {
   }
 
   return labels[status]
+}
+
+function getRecorderHint(
+  status: RecorderStatus,
+  screenReady: boolean,
+  micEnabled: boolean,
+  cameraEnabled: boolean,
+  countdown: number | null,
+) {
+  if (status === 'recording') {
+    return {
+      label: 'Recording live',
+      detail:
+        'Capture active. Pause to stop motion, or keep rolling and Save once you stop.',
+    }
+  }
+
+  if (status === 'paused') {
+    return {
+      label: 'Paused',
+      detail: 'Capture paused. Resume for more time, or finish then save your draft.',
+    }
+  }
+
+  if (status === 'countdown') {
+    const remaining = countdown ?? 3
+    return {
+      label: 'Countdown',
+      detail: `Starting in ${remaining} second${remaining === 1 ? '' : 's'}. Keep source setup as-is or cancel to abort.`,
+    }
+  }
+
+  if (status === 'requesting') {
+    return {
+      label: 'Starting capture',
+      detail: 'Browser prompt active. Approve the source and input permissions.',
+    }
+  }
+
+  if (status === 'ready') {
+    return {
+      label: 'Review draft',
+      detail: 'Review this recording, then save or discard to continue.',
+    }
+  }
+
+  if (status === 'stopping') {
+    return {
+      label: 'Wrapping up',
+      detail: 'Finishing the capture. Save button will unlock once draft is ready.',
+    }
+  }
+
+  if (!screenReady) {
+    const missing = micEnabled || cameraEnabled ? 'Capture source' : 'Source, mic, and camera'
+    return {
+      label: 'Waiting',
+      detail: `${missing} not ready. Press Record after your input preferences are set.`,
+    }
+  }
+
+  const enabled: string[] = []
+  if (micEnabled) enabled.push('mic')
+  if (cameraEnabled) enabled.push('camera')
+
+  if (enabled.length) {
+    return {
+      label: 'Ready',
+      detail: `Capture ready with ${enabled.join(' + ')} enabled. Press Record to begin.`,
+    }
+  }
+
+  return {
+    label: 'Ready',
+    detail: 'Press Record to capture your first take.',
+  }
 }
 
 function isCaptureActive(status: RecorderStatus) {
