@@ -1342,6 +1342,87 @@ a:focus-visible {
   background: var(--panel);
 }
 
+.share-ready-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid rgba(15, 118, 110, 0.28);
+  border-radius: 8px;
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.share-ready-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.share-ready-heading strong {
+  display: block;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.share-ready-heading p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.share-ready-steps {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(104px, 1fr));
+  gap: 6px;
+  list-style: none;
+}
+
+.share-ready-steps li {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.share-ready-steps li span {
+  width: 20px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.share-ready-steps li.complete {
+  color: var(--accent-ink);
+}
+
+.share-ready-steps li.active {
+  color: var(--surface);
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.share-ready-steps li.active span {
+  color: var(--ink);
+  background: var(--surface);
+}
+
 .check-row,
 .field-row {
   min-width: 0;
@@ -1639,6 +1720,10 @@ a:focus-visible {
 
   .share-link-row .secondary-button {
     width: 100%;
+  }
+
+  .share-ready-steps {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .recorder-status-banner p {

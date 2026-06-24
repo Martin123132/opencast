@@ -1533,6 +1533,7 @@ function ShareDialog({
   const canRecreateLink = recording.shareExpired || hasRevokedLink
   const linkActionLabel = canRecreateLink ? 'Recreate link' : hasAnyShareLink ? 'Update link' : 'Create link'
   const canShareActions = hasActiveShare
+  const primaryShareActionLabel = hasActiveShare ? 'Copy guest link' : linkActionLabel
   const shareLinkLabel = recording.shareExpired
     ? 'Share link expired'
     : hasRevokedLink
@@ -1555,7 +1556,7 @@ function ShareDialog({
     }
 
     if (hasActiveShare) {
-      return 'Public link is ready. Copy to share or revoke when needed.'
+      return 'Public link is ready. Copy to share or unshare when access should stop.'
     }
 
     return 'No active public link. Create one from this recording.'
@@ -1680,6 +1681,34 @@ function ShareDialog({
           />
         </div>
 
+        {canShareActions && shareUrl ? (
+          <section className="share-ready-card" aria-label="Share ready">
+            <div className="share-ready-heading">
+              <span className="row-icon" aria-hidden="true">
+                <CheckCircle2 size={17} />
+              </span>
+              <div>
+                <strong>Ready to send</strong>
+                <p>Guest link is active. Copy it now, preview the guest view, or unshare when access should stop.</p>
+              </div>
+            </div>
+            <ol className="share-ready-steps">
+              <li className="complete">
+                <span aria-hidden="true"><Check size={14} /></span>
+                Link created
+              </li>
+              <li className="active">
+                <span aria-hidden="true"><Copy size={14} /></span>
+                Copy link
+              </li>
+              <li>
+                <span aria-hidden="true"><Eye size={14} /></span>
+                Review guest view
+              </li>
+            </ol>
+          </section>
+        ) : null}
+
         {shouldShowShareLink && shareUrl ? (
           <div className="share-box">
             <strong className="share-link-label">Guest link</strong>
@@ -1696,10 +1725,16 @@ function ShareDialog({
         ) : null}
 
         <div className="dialog-actions">
-          <button className="primary-button" type="button" onClick={onSave}>
-            <Link2 size={16} />
-            {linkActionLabel}
+          <button className="primary-button" type="button" onClick={hasActiveShare ? onCopy : onSave}>
+            {hasActiveShare ? <Copy size={16} /> : <Link2 size={16} />}
+            {primaryShareActionLabel}
           </button>
+          {hasActiveShare ? (
+            <button className="secondary-button" type="button" onClick={onSave}>
+              <Link2 size={16} />
+              Update link
+            </button>
+          ) : null}
           {canShareActions ? (
             <a className="secondary-link" href={shareUrl ?? ''} target="_blank" rel="noreferrer">
               <Eye size={16} />
@@ -1709,7 +1744,7 @@ function ShareDialog({
           {recording.shareToken ? (
             <button className="danger-outline-button" type="button" onClick={onRevoke}>
               <Trash2 size={16} />
-              Revoke
+              Unshare
             </button>
           ) : null}
         </div>
@@ -2400,7 +2435,7 @@ function getRecordingShareOwnerHint(recording: Recording) {
   const shareState = getRecordingShareState(recording)
 
   if (shareState === 'shared') {
-    return 'Active guest link is ready. Use Copy link for instant sharing, or revoke when access should stop.'
+    return 'Active guest link is ready. Use Copy link for instant sharing, or unshare when access should stop.'
   }
 
   if (shareState === 'expired') {
