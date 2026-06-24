@@ -1797,6 +1797,8 @@ function ShareView({ token }: { token: string }) {
         setError(null)
       })
       .catch((caughtError: unknown) => {
+        setRecording(null)
+        setRequiresPassword(false)
         setError(normalizeShareAccessError(caughtError))
       })
   }, [accessToken, token])
@@ -1893,28 +1895,89 @@ function ShareView({ token }: { token: string }) {
             </div>
           </>
         ) : requiresPassword ? (
-          <form className="password-form" onSubmit={handlePasswordSubmit}>
-            <Lock size={26} />
-            <label htmlFor="share-password">Password</label>
-            <input
-              id="share-password"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-            <button className="primary-button" type="submit" disabled={isCheckingPassword}>
-              {isCheckingPassword ? 'Checking' : 'Unlock'}
+          <form className="share-gate-card protected" aria-label="Protected share" onSubmit={handlePasswordSubmit}>
+            <span className="share-gate-icon" aria-hidden="true">
+              <Lock size={24} />
+            </span>
+            <div className="share-gate-copy">
+              <span>Private link</span>
+              <h2>Enter the share password</h2>
+              <p>
+                This recording is protected. ShareFrame keeps the title, playback, and access settings hidden until
+                the password is accepted.
+              </p>
+            </div>
+            <div className="share-gate-chips" aria-label="Protected share status">
+              <StatusChip tone="neutral" icon={<Lock size={15} />} label="Playback locked" />
+              <StatusChip tone="neutral" icon={<ShieldCheck size={15} />} label="Details hidden" />
+              <StatusChip tone="neutral" icon={<Eye size={15} />} label="Owner controlled" />
+            </div>
+            <label className="share-password-field" htmlFor="share-password">
+              <span>Share password</span>
+              <input
+                id="share-password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Enter password"
+                autoComplete="current-password"
+                autoFocus
+              />
+            </label>
+            <button className="primary-button" type="submit" disabled={isCheckingPassword || !password.trim()}>
+              <Lock size={16} />
+              {isCheckingPassword ? 'Checking' : 'Unlock share'}
             </button>
             {error ? <p className="inline-error">{error}</p> : null}
           </form>
         ) : (
-          <div className="share-empty">
-            <Link2 size={26} />
-            <span>{error ?? 'Loading'}</span>
-          </div>
+          <ShareUnavailableState message={error} />
         )}
       </section>
     </main>
+  )
+}
+
+function ShareUnavailableState({ message }: { message: string | null }) {
+  const isLoading = !message
+
+  return (
+    <section
+      className={`share-gate-card ${isLoading ? 'loading' : 'unavailable'}`}
+      aria-label={isLoading ? 'Checking share' : 'Unavailable share'}
+    >
+      <span className="share-gate-icon" aria-hidden="true">
+        {isLoading ? <RefreshCcw size={24} /> : <Link2 size={24} />}
+      </span>
+      <div className="share-gate-copy">
+        <span>{isLoading ? 'Checking link' : 'Access unavailable'}</span>
+        <h2>{isLoading ? 'Checking this share link' : message}</h2>
+        <p>
+          {isLoading
+            ? 'ShareFrame is verifying whether this private link is still active.'
+            : 'The owner may have revoked, replaced, or expired this link. For privacy, recording details are not shown here.'}
+        </p>
+      </div>
+      <div className="share-gate-chips" aria-label={isLoading ? 'Share check status' : 'Unavailable share status'}>
+        <StatusChip tone="neutral" icon={<Lock size={15} />} label="No recording details shown" />
+        <StatusChip
+          tone={isLoading ? 'neutral' : 'bad'}
+          icon={<Link2 size={15} />}
+          label={isLoading ? 'Verifying access' : 'Link inactive'}
+        />
+        <StatusChip
+          tone="neutral"
+          icon={<ShieldCheck size={15} />}
+          label={isLoading ? 'Private by default' : 'Ask owner for a fresh link'}
+        />
+      </div>
+      {!isLoading ? (
+        <button className="secondary-button" type="button" onClick={() => window.location.reload()}>
+          <RefreshCcw size={16} />
+          Check again
+        </button>
+      ) : null}
+    </section>
   )
 }
 
@@ -1928,6 +1991,10 @@ function normalizeShareAccessError(caughtError: unknown, fallback = 'This share 
 
   if (lowered.includes('share link expired')) {
     return 'This share link is no longer available.'
+  }
+
+  if (lowered.includes('incorrect password') || lowered.includes('could not unlock share')) {
+    return 'Password did not unlock this share.'
   }
 
   if (lowered.includes('request failed with 404') || lowered.includes('request failed with 410')) {

@@ -1559,30 +1559,6 @@ a:focus-visible {
   margin-top: 12px;
 }
 
-.password-form {
-  min-height: 360px;
-  display: grid;
-  place-content: center;
-  gap: 10px;
-  color: var(--muted);
-}
-
-.password-form label {
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 760;
-}
-
-.password-form input {
-  width: min(320px, 70vw);
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--ink);
-  background: var(--surface);
-}
-
 .download-link {
   width: fit-content;
   min-height: 36px;
@@ -1664,12 +1640,104 @@ a:focus-visible {
   gap: 8px;
 }
 
-.share-empty {
+.share-gate-card {
   min-height: 360px;
   display: grid;
-  place-content: center;
-  gap: 12px;
+  align-content: center;
+  justify-items: start;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.share-gate-card.protected {
+  border-color: rgba(15, 118, 110, 0.24);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.share-gate-card.unavailable {
+  border-color: rgba(218, 64, 39, 0.22);
+  background: rgba(218, 64, 39, 0.06);
+}
+
+.share-gate-icon {
+  width: 44px;
+  height: 44px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--surface);
+  background: var(--ink);
+}
+
+.share-gate-card.protected .share-gate-icon {
+  color: var(--accent-ink);
+  background: rgba(15, 118, 110, 0.12);
+}
+
+.share-gate-card.unavailable .share-gate-icon {
+  color: var(--danger);
+  background: rgba(218, 64, 39, 0.1);
+}
+
+.share-gate-copy {
+  max-width: 560px;
+  display: grid;
+  gap: 6px;
+}
+
+.share-gate-copy span {
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 820;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.share-gate-copy h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.share-gate-copy p {
+  margin: 0;
   color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.share-gate-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.share-password-field {
+  width: min(360px, 100%);
+  display: grid;
+  gap: 6px;
+}
+
+.share-password-field span {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.share-password-field input {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--surface);
+  font-size: 14px;
 }
 
 @media (max-width: 980px) {

@@ -484,9 +484,21 @@ test('applies password expiry and playback-only share settings for guests', asyn
 
   await page.goto(guestHref!)
   await expect(page.getByRole('heading', { name: 'ShareFrame' })).toBeVisible()
-  await expect(page.getByLabel('Password')).toBeVisible()
-  await page.getByLabel('Password').fill('secret-pass')
-  await page.getByRole('button', { name: 'Unlock' }).click()
+  const protectedShare = page.getByLabel('Protected share', { exact: true })
+  await expect(protectedShare.getByText('Enter the share password')).toBeVisible()
+  await expect(protectedShare.getByText('Playback locked')).toBeVisible()
+  await expect(protectedShare.getByText('Details hidden')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Protected share fixture' })).toBeHidden()
+  await expect(page.locator('video.shared-video')).toBeHidden()
+  await page.getByLabel('Share password').fill('wrong-pass')
+  await page.getByRole('button', { name: 'Unlock share' }).click()
+  await expect(protectedShare.getByText('Password did not unlock this share.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Protected share fixture' })).toBeHidden()
+  expect(consoleMessages().filter((message) => message.includes('401 (Unauthorized)'))).toHaveLength(1)
+  await saveSmokeScreenshot(page, 'protected-share-password-gate.png')
+
+  await page.getByLabel('Share password').fill('secret-pass')
+  await page.getByRole('button', { name: 'Unlock share' }).click()
 
   await expect(page.locator('video.shared-video')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Protected share fixture' })).toBeVisible()
@@ -499,7 +511,7 @@ test('applies password expiry and playback-only share settings for guests', asyn
 
   await guestAccess.scrollIntoViewIfNeeded()
   await saveSmokeScreenshot(page, 'protected-share-playback-only.png')
-  expect(consoleMessages()).toEqual([])
+  expect(consoleMessages().filter((message) => !message.includes('401 (Unauthorized)'))).toEqual([])
 })
 
 test('revokes a shared link, blocks old guest links, and recreates', async ({ page, request }) => {
@@ -535,7 +547,15 @@ test('revokes a shared link, blocks old guest links, and recreates', async ({ pa
   expect(revokedRecording?.shareToken).toBeNull()
 
   await page.goto(guestHref!)
-  await expect(page.getByText('This share link is unavailable.')).toBeVisible()
+  const unavailableShare = page.getByLabel('Unavailable share', { exact: true })
+  await expect(unavailableShare.getByText('This share link is unavailable.')).toBeVisible()
+  await expect(unavailableShare.getByText('No recording details shown')).toBeVisible()
+  await expect(unavailableShare.getByText('Link inactive')).toBeVisible()
+  await expect(unavailableShare.getByText('Ask owner for a fresh link')).toBeVisible()
+  await expect(unavailableShare.getByRole('button', { name: 'Check again' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Revoke lifecycle fixture' })).toBeHidden()
+  await expect(page.locator('video.shared-video')).toBeHidden()
+  await saveSmokeScreenshot(page, 'revoked-share-unavailable.png')
 
   await page.goto('/')
   await page.reload()
@@ -563,7 +583,7 @@ test('revokes a shared link, blocks old guest links, and recreates', async ({ pa
   expect(recreatedRecording?.shareToken).toBeTruthy()
 
   await page.goto(guestHref!)
-  await expect(page.getByText('This share link is unavailable.')).toBeVisible()
+  await expect(page.getByLabel('Unavailable share', { exact: true }).getByText('This share link is unavailable.')).toBeVisible()
   await page.goto(recreatedHref!)
   await expect(page.locator('.shared-video')).toBeVisible()
   await expect(page.getByLabel('Guest access summary').getByText('Downloads allowed')).toBeVisible()
