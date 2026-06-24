@@ -113,6 +113,7 @@ function StudioApp() {
   const [isRenaming, setIsRenaming] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [captureDiscardArmed, setCaptureDiscardArmed] = useState(false)
+  const [draftRestartArmed, setDraftRestartArmed] = useState(false)
   const [draftDiscardArmed, setDraftDiscardArmed] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
@@ -192,6 +193,7 @@ function StudioApp() {
   const hasLibraryRecording = recordings.length > 0
   const hasSharedRecording = recordings.some((recording) => recording.shareToken)
   const captureDiscardPending = captureDiscardArmed && hasActiveCapture
+  const draftRestartPending = draftRestartArmed && status === 'ready' && recordingBlob !== null
   const firstRunPathReady = useMemo(
     () => ({
       setup: setupComplete,
@@ -230,10 +232,12 @@ function StudioApp() {
     cameraEnabled,
     countdown,
   )
-  const recorderNextHint = captureDiscardPending
-    ? 'Choose Keep recording to continue, or Discard take to stop without saving.'
-    : getRecorderNextHint(status)
-  const recorderActionCues = getRecorderActionCues(status, captureDiscardPending)
+  const recorderNextHint = draftRestartPending
+    ? 'Choose Keep draft to save or review this take, or discard it to record again.'
+    : captureDiscardPending
+      ? 'Choose Keep recording to continue, or Discard take to stop without saving.'
+      : getRecorderNextHint(status)
+  const recorderActionCues = getRecorderActionCues(status, captureDiscardPending, draftRestartPending)
   const recorderPhaseSteps = getRecorderPhaseSteps(status)
   const selectedShareState = selectedRecording ? getRecordingShareState(selectedRecording) : 'private'
   const selectedActiveShareUrl = selectedRecording && selectedShareState === 'shared' ? shareUrl : null
@@ -366,17 +370,15 @@ function StudioApp() {
   const handleStart = useCallback(() => {
     setCaptureDiscardArmed(false)
 
-    if (recordingBlob && !window.confirm('Discard the unsaved recording draft?')) {
+    if (recordingBlob) {
+      setDraftDiscardArmed(false)
+      setDraftRestartArmed(true)
       return
     }
 
-    if (recordingBlob) {
-      setDraftDiscardArmed(false)
-      resetRecording()
-    }
-
+    setDraftRestartArmed(false)
     void startRecording()
-  }, [recordingBlob, resetRecording, startRecording])
+  }, [recordingBlob, startRecording])
 
   const handleClearCaptureState = useCallback(() => {
     setMicEnabled(false)
@@ -431,12 +433,25 @@ function StudioApp() {
     cancelRecording()
   }, [cancelRecording])
 
+  const handleKeepDraftForRestart = useCallback(() => {
+    setDraftRestartArmed(false)
+  }, [])
+
+  const handleConfirmDraftRestart = useCallback(() => {
+    setDraftRestartArmed(false)
+    setDraftDiscardArmed(false)
+    resetRecording()
+    void startRecording()
+  }, [resetRecording, startRecording])
+
   const handleDiscardDraft = useCallback(() => {
     if (!draftDiscardArmed) {
+      setDraftRestartArmed(false)
       setDraftDiscardArmed(true)
       return
     }
 
+    setDraftRestartArmed(false)
     setDraftDiscardArmed(false)
     resetRecording()
   }, [draftDiscardArmed, resetRecording])
@@ -447,6 +462,7 @@ function StudioApp() {
     }
 
     setDraftDiscardArmed(false)
+    setDraftRestartArmed(false)
     setIsSaving(true)
 
     try {
@@ -986,6 +1002,25 @@ function StudioApp() {
                 <button className="danger-button compact" type="button" onClick={handleConfirmCaptureDiscard}>
                   <Trash2 size={16} />
                   Discard take
+                </button>
+              </div>
+            </section>
+          ) : null}
+
+          {draftRestartPending ? (
+            <section className="draft-restart-card" aria-label="Start new take" role="status">
+              <div className="draft-restart-copy">
+                <strong>Start a new take?</strong>
+                <p>This draft is still local. Keep it to save or share, or discard it and open capture again.</p>
+              </div>
+              <div className="draft-restart-actions">
+                <button className="secondary-button compact" type="button" onClick={handleKeepDraftForRestart}>
+                  <Save size={16} />
+                  Keep draft
+                </button>
+                <button className="danger-button compact" type="button" onClick={handleConfirmDraftRestart}>
+                  <MonitorUp size={16} />
+                  Discard draft & record
                 </button>
               </div>
             </section>
@@ -2210,7 +2245,26 @@ function getRecorderNextHint(status: RecorderStatus) {
   return null
 }
 
-function getRecorderActionCues(status: RecorderStatus, captureDiscardArmed = false) {
+function getRecorderActionCues(
+  status: RecorderStatus,
+  captureDiscardArmed = false,
+  draftRestartArmed = false,
+) {
+  if (draftRestartArmed && status === 'ready') {
+    return [
+      {
+        label: 'Keep draft',
+        icon: <Save size={14} />,
+        tone: 'primary' as const,
+      },
+      {
+        label: 'Discard + Record',
+        icon: <MonitorUp size={14} />,
+        tone: 'danger' as const,
+      },
+    ]
+  }
+
   if (captureDiscardArmed && isCaptureActive(status)) {
     return [
       {

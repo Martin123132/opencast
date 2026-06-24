@@ -170,6 +170,7 @@ test('guides first-run from record draft to save then share', async ({ page }) =
   await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible()
   await page.getByRole('button', { name: 'Stop' }).click()
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()
+  const reviewCard = page.getByLabel('Review recording')
   await expect(phaseMeter.locator('.phase-step.active')).toContainText('Save')
   await expect(page.getByLabel('Recorder next-step hint')).toContainText(
     'Save this draft to add it to your library, or discard to retry.',
@@ -185,7 +186,32 @@ test('guides first-run from record draft to save then share', async ({ page }) =
   await expect(reviewMomentum.getByText('Save', { exact: true })).toBeVisible()
   await expect(reviewMomentum.getByText('Share')).toBeVisible()
 
-  const draftTitle = 'Unsaved flow draft'
+  await page.getByRole('button', { name: 'Record', exact: true }).click()
+  const startNewTake = page.getByLabel('Start new take')
+  await expect(page.getByLabel('Recorder next-step hint')).toContainText(
+    'Choose Keep draft to save or review this take, or discard it to record again.',
+  )
+  const actionPath = page.getByLabel('Recorder action path')
+  await expect(actionPath.getByText('Keep draft')).toBeVisible()
+  await expect(actionPath.getByText('Discard + Record')).toBeVisible()
+  await expect(startNewTake.getByText('Start a new take?')).toBeVisible()
+  await expect(startNewTake.getByText('This draft is still local.')).toBeVisible()
+  await expect(startNewTake.getByRole('button', { name: 'Keep draft' })).toBeVisible()
+  await expect(startNewTake.getByRole('button', { name: 'Discard draft & record' })).toBeVisible()
+  await startNewTake.scrollIntoViewIfNeeded()
+  await saveSmokeScreenshot(page, 'review-start-new-take.png')
+
+  await startNewTake.getByRole('button', { name: 'Keep draft' }).click()
+  await expect(startNewTake).toBeHidden()
+  await expect(reviewCard.getByRole('heading', { name: 'Review' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Record', exact: true }).click()
+  await startNewTake.getByRole('button', { name: 'Discard draft & record' }).click()
+  await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible()
+  await page.getByRole('button', { name: 'Stop' }).click()
+  await expect(reviewCard.getByRole('heading', { name: 'Review' })).toBeVisible()
+
+  const draftTitle = 'Restarted flow draft'
   await page.getByRole('textbox', { name: 'Title' }).fill(draftTitle)
   await saveSmokeScreenshot(page, 'review-save-momentum.png')
   await page.getByLabel('Review recording').getByRole('button', { name: 'Save & open Share' }).click()
