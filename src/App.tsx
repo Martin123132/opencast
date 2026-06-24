@@ -950,8 +950,28 @@ function StudioApp() {
               <div className="draft-state" aria-label="Draft status">
                 <StatusChip icon={<Lock size={15} />} label="Unsaved local draft" tone="neutral" />
                 <StatusChip icon={<Clock size={15} />} label={`${formatTime(durationMs ?? 0)} captured`} tone="neutral" />
-                <StatusChip icon={<Link2 size={15} />} label="Save to share" tone="neutral" />
+                <StatusChip icon={<Link2 size={15} />} label="Share after save" tone="neutral" />
               </div>
+              <section className="review-momentum" aria-label="Review momentum">
+                <div className="review-momentum-copy">
+                  <strong>Draft ready</strong>
+                  <p>Save locks this take into the library and opens sharing.</p>
+                </div>
+                <ol className="review-path">
+                  <li className="complete">
+                    <span aria-hidden="true"><Check size={14} /></span>
+                    Preview
+                  </li>
+                  <li className="active">
+                    <span aria-hidden="true"><Save size={14} /></span>
+                    Save
+                  </li>
+                  <li>
+                    <span aria-hidden="true"><Link2 size={14} /></span>
+                    Share
+                  </li>
+                </ol>
+              </section>
               <div className="save-row">
                 <label htmlFor="recording-title">Title</label>
                 <input
@@ -968,7 +988,7 @@ function StudioApp() {
                   disabled={!recordingBlob || isSaving}
                 >
                   {isSaving ? <UploadCloud size={17} /> : <Save size={17} />}
-                  {isSaving ? 'Saving' : 'Save'}
+                  {isSaving ? 'Saving' : 'Save & open Share'}
                 </button>
               </div>
               <div className="review-actions">

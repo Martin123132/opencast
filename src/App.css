@@ -848,6 +848,81 @@ a:focus-visible {
   gap: 8px;
 }
 
+.review-momentum {
+  display: grid;
+  gap: 10px;
+  padding-block: 10px;
+  border-block: 1px solid var(--border);
+}
+
+.review-momentum-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.review-momentum-copy strong {
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.review-momentum-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.review-path {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(82px, 1fr));
+  gap: 6px;
+  list-style: none;
+}
+
+.review-path li {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1;
+}
+
+.review-path li span {
+  width: 20px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.review-path li.complete {
+  color: var(--accent-ink);
+}
+
+.review-path li.active {
+  color: var(--surface);
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.review-path li.active span {
+  color: var(--ink);
+  background: var(--surface);
+}
+
 .draft-confirmation {
   flex: 1 1 280px;
   justify-content: flex-end;

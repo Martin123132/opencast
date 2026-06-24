@@ -147,11 +147,18 @@ test('guides first-run from record draft to save then share', async ({ page }) =
   await expect(page.getByLabel('Current guidance').getByText('Save this draft')).toBeVisible()
   const draftStatus = page.getByLabel('Draft status')
   await expect(draftStatus.getByText('Unsaved local draft')).toBeVisible()
-  await expect(draftStatus.getByText('Save to share')).toBeVisible()
+  await expect(draftStatus.getByText('Share after save')).toBeVisible()
+  const reviewMomentum = page.getByLabel('Review momentum')
+  await expect(reviewMomentum.getByText('Draft ready')).toBeVisible()
+  await expect(reviewMomentum.getByText('Save locks this take into the library and opens sharing.')).toBeVisible()
+  await expect(reviewMomentum.getByText('Preview')).toBeVisible()
+  await expect(reviewMomentum.getByText('Save', { exact: true })).toBeVisible()
+  await expect(reviewMomentum.getByText('Share')).toBeVisible()
 
   const draftTitle = 'Unsaved flow draft'
   await page.getByRole('textbox', { name: 'Title' }).fill(draftTitle)
-  await page.getByLabel('Review recording').getByRole('button', { name: 'Save' }).click()
+  await saveSmokeScreenshot(page, 'review-save-momentum.png')
+  await page.getByLabel('Review recording').getByRole('button', { name: 'Save & open Share' }).click()
 
   const shareDialog = page.getByRole('dialog', { name: 'Share recording' })
   await expect(shareDialog).toBeVisible({ timeout: 15000 })
@@ -191,6 +198,7 @@ test('confirms draft discard inline and leaves the library empty', async ({ page
   const reviewCard = page.getByLabel('Review recording')
   await expect(reviewCard.getByRole('heading', { name: 'Review' })).toBeVisible()
   await expect(reviewCard.getByText('Unsaved local draft')).toBeVisible()
+  await expect(reviewCard.getByLabel('Review momentum').getByText('Save', { exact: true })).toBeVisible()
 
   await reviewCard.getByRole('button', { name: 'Discard' }).click()
   await expect(reviewCard.getByText('Discard this draft?')).toBeVisible()
