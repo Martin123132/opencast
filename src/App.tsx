@@ -222,6 +222,7 @@ function StudioApp() {
   )
   const recorderNextHint = getRecorderNextHint(status)
   const recorderActionCues = getRecorderActionCues(status)
+  const recorderPhaseSteps = getRecorderPhaseSteps(status)
   const selectedShareState = selectedRecording ? getRecordingShareState(selectedRecording) : 'private'
   const selectedActiveShareUrl = selectedRecording && selectedShareState === 'shared' ? shareUrl : null
   const selectedShareHint = selectedRecording ? getRecordingShareOwnerHint(selectedRecording) : null
@@ -771,6 +772,18 @@ function StudioApp() {
               ))}
             </div>
           ) : null}
+          <ol className="recorder-phase-meter" aria-label="Capture phase meter">
+            {recorderPhaseSteps.map((phase) => (
+              <li
+                className={`phase-step ${phase.active ? 'active' : ''} ${phase.complete ? 'complete' : ''}`}
+                key={phase.id}
+                aria-current={phase.active ? 'step' : undefined}
+              >
+                <span aria-hidden="true">{phase.complete ? <Check size={14} /> : phase.icon}</span>
+                <strong>{phase.label}</strong>
+              </li>
+            ))}
+          </ol>
 
           <div className="stage">
             <canvas ref={canvasRef} className="recording-canvas" />
@@ -850,9 +863,9 @@ function StudioApp() {
                 <Video size={16} />
                 Camera: {cameraEnabled ? 'Enabled' : 'Disabled'}
               </span>
-              <span className={`input-status ${status === 'error' ? 'missing' : 'ready'}`}>
+              <span className={`input-status ${status === 'error' || !screenReady ? 'missing' : 'ready'}`}>
                 <Radio size={16} />
-                Capture: {status === 'error' ? 'Needs attention' : 'Ready'}
+                Capture: {status === 'error' ? 'Needs attention' : screenReady ? 'Ready' : 'Source required'}
               </span>
             </div>
 
@@ -2053,6 +2066,44 @@ function getRecorderActionCues(status: RecorderStatus) {
   }
 
   return []
+}
+
+function getRecorderPhaseSteps(status: RecorderStatus) {
+  const phases = [
+    { id: 'setup', label: 'Setup', icon: <ShieldCheck size={14} /> },
+    { id: 'countdown', label: 'Countdown', icon: <Clock size={14} /> },
+    { id: 'record', label: 'Record', icon: <Radio size={14} /> },
+    { id: 'review', label: 'Review', icon: <FilePenLine size={14} /> },
+    { id: 'save', label: 'Save', icon: <Save size={14} /> },
+  ]
+  const activeId = getRecorderActivePhase(status)
+  const activeIndex = phases.findIndex((phase) => phase.id === activeId)
+
+  return phases.map((phase, index) => ({
+    ...phase,
+    active: phase.id === activeId,
+    complete: index < activeIndex,
+  }))
+}
+
+function getRecorderActivePhase(status: RecorderStatus) {
+  if (status === 'countdown') {
+    return 'countdown'
+  }
+
+  if (status === 'recording' || status === 'paused') {
+    return 'record'
+  }
+
+  if (status === 'stopping') {
+    return 'review'
+  }
+
+  if (status === 'ready') {
+    return 'save'
+  }
+
+  return 'setup'
 }
 
 function isCaptureActive(status: RecorderStatus) {

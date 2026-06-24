@@ -490,6 +490,69 @@
   background: rgba(218, 64, 39, 0.08);
 }
 
+.recorder-phase-meter {
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 6px;
+  list-style: none;
+}
+
+.phase-step {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--panel);
+}
+
+.phase-step span {
+  width: 20px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.phase-step strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.phase-step.active {
+  color: var(--ink);
+  border-color: rgba(15, 118, 110, 0.38);
+  background: rgba(15, 118, 110, 0.1);
+}
+
+.phase-step.active span {
+  color: var(--accent-ink);
+  background: rgba(15, 118, 110, 0.14);
+}
+
+.phase-step.complete {
+  color: var(--accent-ink);
+}
+
+.phase-step.complete span {
+  color: var(--accent-ink);
+  background: rgba(15, 118, 110, 0.12);
+}
+
 .countdown-overlay span,
 .pause-overlay span {
   font-size: 14px;

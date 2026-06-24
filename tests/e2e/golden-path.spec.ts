@@ -134,10 +134,13 @@ test('guides first-run from record draft to save then share', async ({ page }) =
   await page.getByRole('button', { name: 'Start' }).click()
 
   await expect(page.getByRole('button', { name: 'Record', exact: true })).toBeVisible()
+  const phaseMeter = page.getByLabel('Capture phase meter')
+  await expect(phaseMeter.locator('.phase-step.active')).toContainText('Setup')
   await page.getByRole('button', { name: 'Record', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible()
   await page.getByRole('button', { name: 'Stop' }).click()
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()
+  await expect(phaseMeter.locator('.phase-step.active')).toContainText('Save')
   await expect(page.getByLabel('Recorder next-step hint')).toContainText(
     'Save this draft to add it to your library, or discard to retry.',
   )
@@ -215,6 +218,7 @@ test('guides live recording controls through pause, resume, and discard', async 
 
   const captureStatus = page.getByLabel('Capture status')
   const captureInputStatus = page.getByLabel('Capture input status')
+  const phaseMeter = page.getByLabel('Capture phase meter')
   await expect(captureStatus.getByText('Source: None')).toBeVisible()
   await expect(captureStatus.getByText('Mic: On')).toBeVisible()
   await expect(captureStatus.getByText('Camera: Off')).toBeVisible()
@@ -223,6 +227,8 @@ test('guides live recording controls through pause, resume, and discard', async 
   await expect(captureInputStatus.getByText('Screen: Not selected')).toBeVisible()
   await expect(captureInputStatus.getByText('Mic: Enabled')).toBeVisible()
   await expect(captureInputStatus.getByText('Camera: Disabled')).toBeVisible()
+  await expect(captureInputStatus.getByText('Capture: Source required')).toBeVisible()
+  await expect(phaseMeter.locator('.phase-step.active')).toContainText('Setup')
   await page.getByRole('button', { name: 'Camera' }).click()
   await expect(captureStatus.getByText('Camera: On')).toBeVisible()
   await expect(captureInputStatus.getByText('Camera: Enabled')).toBeVisible()
@@ -236,6 +242,7 @@ test('guides live recording controls through pause, resume, and discard', async 
 
   await page.getByRole('button', { name: 'Record', exact: true }).click()
   await expect(page.getByText('Get ready')).toBeVisible()
+  await expect(phaseMeter.locator('.phase-step.active')).toContainText('Countdown')
   await expect(page.getByLabel('Recorder next-step hint')).toContainText(
     'Keep source and audio/video channels as-is while countdown completes.',
   )
@@ -249,6 +256,7 @@ test('guides live recording controls through pause, resume, and discard', async 
   await expect(page.getByLabel('Recorder next-step hint')).toContainText(
     'Resume for more time, or stop to open the review draft.',
   )
+  await expect(phaseMeter.locator('.phase-step.active')).toContainText('Record')
   await expect(actionPath.getByText('Resume')).toBeVisible()
   await expect(actionPath.getByText('Stop + Review')).toBeVisible()
   await expect(page.locator('.pause-overlay').getByText('Paused')).toBeVisible()
@@ -258,6 +266,7 @@ test('guides live recording controls through pause, resume, and discard', async 
   await expect(page.getByLabel('Recorder next-step hint')).toContainText(
     'Pause for a break, or stop when you are ready to review and save.',
   )
+  await expect(phaseMeter.locator('.phase-step.active')).toContainText('Record')
   await expect(actionPath.getByText('Pause')).toBeVisible()
   await expect(actionPath.getByText('Stop + Review')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
