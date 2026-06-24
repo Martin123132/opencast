@@ -1314,6 +1314,7 @@ a:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
   text-decoration: none;
+  user-select: all;
 }
 
 .share-controls {
@@ -1421,6 +1422,44 @@ a:focus-visible {
 .share-ready-steps li.active span {
   color: var(--ink);
   background: var(--surface);
+}
+
+.share-preview-card,
+.copy-fallback-card {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.share-preview-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.share-preview-card strong,
+.copy-fallback-card strong {
+  display: block;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.share-preview-card p,
+.copy-fallback-card p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.copy-fallback-card {
+  margin-top: 10px;
+  border-color: rgba(180, 83, 9, 0.32);
+  background: rgba(180, 83, 9, 0.08);
 }
 
 .check-row,
@@ -1724,6 +1763,14 @@ a:focus-visible {
 
   .share-ready-steps {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .share-preview-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .share-preview-card .secondary-link {
+    width: 100%;
   }
 
   .recorder-status-banner p {

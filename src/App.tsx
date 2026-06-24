@@ -62,6 +62,8 @@ type PendingDelete = {
 
 const setupStorageKey = 'opencast.setup.v1'
 const undoDeleteWindowMs = 4000
+const copyBlockedStatus =
+  'Copy blocked. Select the guest link, or use Preview guest view and copy the address from the browser.'
 
 function App() {
   const shareToken = getShareToken()
@@ -128,6 +130,12 @@ function StudioApp() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const recordButtonRef = useRef<HTMLButtonElement | null>(null)
   const saveButtonRef = useRef<HTMLButtonElement | null>(null)
+
+  const copyShareLink = useCallback(async (url: string, successMessage = 'Share link copied.') => {
+    const copied = await copyText(url)
+    setShareStatus(copied ? successMessage : copyBlockedStatus)
+    return copied
+  }, [])
 
   const captureSupported = Boolean(navigator.mediaDevices?.getDisplayMedia)
   const storageCompliant = appConfig?.dataRootCompliant !== false && !configError
@@ -648,14 +656,16 @@ function StudioApp() {
       setShareUrl(nextUrl)
       setSharePassword('')
       setShareDialogOpen(true)
-      setShareStatus(isUpdating ? 'Share link updated.' : 'Share link created.')
 
       if (nextUrl) {
-        await copyText(nextUrl)
+        await copyShareLink(nextUrl, isUpdating ? 'Share link updated and copied.' : 'Share link created and copied.')
+      } else {
+        setShareStatus(isUpdating ? 'Share link updated.' : 'Share link created.')
       }
     },
     [
       applyShareDefaults,
+      copyShareLink,
       loadLibrary,
       passwordEnabled,
       shareDownloadEnabled,
@@ -1210,8 +1220,7 @@ function StudioApp() {
                     type="button"
                     onClick={() => {
                       if (selectedOwnerPathAction.type === 'copy-link' && selectedActiveShareUrl) {
-                        void copyText(selectedActiveShareUrl)
-                        setShareStatus('Share link copied.')
+                        void copyShareLink(selectedActiveShareUrl)
                         return
                       }
 
@@ -1296,8 +1305,7 @@ function StudioApp() {
                     className="secondary-button compact"
                     type="button"
                     onClick={() => {
-                      void copyText(selectedActiveShareUrl)
-                      setShareStatus('Share link copied.')
+                      void copyShareLink(selectedActiveShareUrl)
                     }}
                   >
                     <Copy size={16} />
@@ -1379,8 +1387,7 @@ function StudioApp() {
           onClose={() => setShareDialogOpen(false)}
           onCopy={() => {
             if (shareUrl) {
-              void copyText(shareUrl)
-              setShareStatus('Share link copied.')
+              void copyShareLink(shareUrl)
             }
           }}
           onPasswordEnabledChange={setPasswordEnabled}
@@ -1570,6 +1577,7 @@ function ShareDialog({
     : 'No password'
   const pendingExpiryLabel = formatShareExpirySummary(expiresAt)
   const pendingDownloadLabel = downloadEnabled ? 'Downloads allowed' : 'Playback only'
+  const copyFallbackVisible = status === copyBlockedStatus && shouldShowShareLink && Boolean(shareUrl)
 
   return (
     <div className="modal-backdrop" role="presentation">
@@ -1706,6 +1714,16 @@ function ShareDialog({
                 Review guest view
               </li>
             </ol>
+            <div className="share-preview-card" aria-label="Guest preview checklist">
+              <div>
+                <strong>Preview before sending</strong>
+                <p>Open the guest view to confirm playback and access settings before the link leaves your machine.</p>
+              </div>
+              <a className="secondary-link compact" href={shareUrl} target="_blank" rel="noreferrer">
+                <Eye size={16} />
+                Preview guest view
+              </a>
+            </div>
           </section>
         ) : null}
 
@@ -1722,6 +1740,13 @@ function ShareDialog({
               </button>
             </div>
           </div>
+        ) : null}
+
+        {copyFallbackVisible ? (
+          <section className="copy-fallback-card" aria-label="Copy fallback">
+            <strong>Clipboard fallback</strong>
+            <p>The guest link remains visible above. Select it manually, or open Preview guest view and copy the address bar.</p>
+          </section>
         ) : null}
 
         <div className="dialog-actions">
@@ -2233,14 +2258,31 @@ function getStepGuidance(activeStep: StudioStep, hasReviewDraft: boolean) {
 }
 
 async function copyText(value: string) {
-  if (!navigator.clipboard) {
-    return
+  const clipboardWrite = navigator.clipboard?.writeText
+
+  if (clipboardWrite) {
+    try {
+      await clipboardWrite.call(navigator.clipboard, value)
+      return true
+    } catch {
+      // Fall through to the legacy selection path below.
+    }
   }
 
+  const field = document.createElement('textarea')
+  field.value = value
+  field.setAttribute('readonly', 'true')
+  field.style.position = 'fixed'
+  field.style.left = '-9999px'
+  document.body.append(field)
+  field.select()
+
   try {
-    await navigator.clipboard.writeText(value)
+    return document.execCommand('copy')
   } catch {
-    // Copy is a convenience; the visible link remains usable when permission is denied.
+    return false
+  } finally {
+    field.remove()
   }
 }
 

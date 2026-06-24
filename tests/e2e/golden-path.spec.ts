@@ -60,7 +60,35 @@ async function installRecorderStub(page: Page) {
   })
 }
 
-test.beforeEach(async ({ request }) => {
+async function installClipboardSuccessStub(page: Page) {
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => {
+          window.localStorage.setItem('shareframe.clipboard.last', value)
+        },
+      },
+    })
+  })
+}
+
+async function blockClipboardWrites(page: Page) {
+  await page.evaluate(() => {
+    Object.defineProperty(window.navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async () => {
+          throw new DOMException('Clipboard blocked', 'NotAllowedError')
+        },
+      },
+    })
+    document.execCommand = () => false
+  })
+}
+
+test.beforeEach(async ({ page, request }) => {
+  await installClipboardSuccessStub(page)
   await waitForApiConfig(request)
   await resetE2eData()
   await deleteRecordings(request)
@@ -178,7 +206,7 @@ test('guides first-run from record draft to save then share', async ({ page }) =
   await expect(readyState.getByText('Ready to send')).toBeVisible()
   await expect(readyState.getByText('Link created')).toBeVisible()
   await expect(readyState.getByText('Copy link')).toBeVisible()
-  await expect(readyState.getByText('Review guest view')).toBeVisible()
+  await expect(readyState.getByText('Review guest view', { exact: true })).toBeVisible()
   await expect(shareDialog.getByRole('button', { name: 'Copy guest link' })).toBeVisible()
   await expect(shareDialog.getByRole('button', { name: 'Update link' })).toBeVisible()
   await shareDialog.getByRole('button', { name: 'Copy guest link' }).click()
@@ -386,6 +414,35 @@ test('shows library recordings, validates rename, and opens the share modal', as
   await expect(selectedGuestLink).toHaveAttribute('href', /\/s\//)
 
   expect(recording.id).toBeTruthy()
+  expect(consoleMessages()).toEqual([])
+})
+
+test('shows a manual copy fallback when browser clipboard writes are blocked', async ({ page, request }) => {
+  const consoleMessages = collectConsoleIssues(page)
+  await createRecording(request, 'Clipboard fallback fixture')
+
+  await page.goto('/')
+  await blockClipboardWrites(page)
+  await page.getByRole('button', { name: 'Start' }).click()
+
+  const selected = page.getByLabel('Selected recording')
+  await expect(selected).toBeVisible()
+  await selected.getByRole('button', { name: 'Share' }).click()
+
+  const shareDialog = page.getByRole('dialog', { name: 'Share recording' })
+  await expect(shareDialog).toBeVisible()
+  await shareDialog.getByRole('button', { name: 'Create link' }).click()
+  await expect(shareDialog.getByText('/s/')).toBeVisible()
+  await expect(shareDialog.getByLabel('Share ready').getByText('Ready to send')).toBeVisible()
+  await expect(shareDialog.getByLabel('Guest preview checklist').getByText('Preview before sending')).toBeVisible()
+  const previewLink = shareDialog.getByRole('link', { name: 'Preview guest view' })
+  await expect(previewLink).toBeVisible()
+  await expect(previewLink).toHaveAttribute('href', /\/s\//)
+  await expect(shareDialog.getByText('Copy blocked. Select the guest link')).toBeVisible()
+  await expect(shareDialog.getByLabel('Copy fallback').getByText('Clipboard fallback')).toBeVisible()
+  await expect(shareDialog.getByLabel('Copy fallback').getByText('copy the address bar')).toBeVisible()
+
+  await saveSmokeScreenshot(page, 'share-copy-fallback.png')
   expect(consoleMessages()).toEqual([])
 })
 
