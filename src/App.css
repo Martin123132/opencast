@@ -443,6 +443,53 @@
   text-transform: uppercase;
 }
 
+.recorder-action-path {
+  margin: 0 0 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.action-cue {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.action-cue svg {
+  color: currentColor;
+}
+
+.action-cue.neutral {
+  color: var(--muted);
+}
+
+.action-cue.secondary {
+  color: var(--accent-ink);
+  border-color: rgba(15, 118, 110, 0.3);
+  background: rgba(15, 118, 110, 0.1);
+}
+
+.action-cue.primary {
+  color: var(--surface);
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.action-cue.danger {
+  color: var(--danger);
+  border-color: rgba(218, 64, 39, 0.34);
+  background: rgba(218, 64, 39, 0.08);
+}
+
 .countdown-overlay span,
 .pause-overlay span {
   font-size: 14px;

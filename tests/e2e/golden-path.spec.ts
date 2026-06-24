@@ -232,12 +232,15 @@ test('guides live recording controls through pause, resume, and discard', async 
   await expect(captureInputStatus.getByText('Mic: Disabled')).toBeVisible()
   await expect(captureInputStatus.getByText('Camera: Disabled')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Clear capture setup' })).toBeHidden()
+  const actionPath = page.getByLabel('Recorder action path')
 
   await page.getByRole('button', { name: 'Record', exact: true }).click()
   await expect(page.getByText('Get ready')).toBeVisible()
   await expect(page.getByLabel('Recorder next-step hint')).toContainText(
     'Keep source and audio/video channels as-is while countdown completes.',
   )
+  await expect(actionPath.getByText('Standby')).toBeVisible()
+  await expect(actionPath.getByText('Cancel to adjust setup')).toBeVisible()
   await expect(captureStatus.getByText('Source: Armed')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible()
 
@@ -246,6 +249,8 @@ test('guides live recording controls through pause, resume, and discard', async 
   await expect(page.getByLabel('Recorder next-step hint')).toContainText(
     'Resume for more time, or stop to open the review draft.',
   )
+  await expect(actionPath.getByText('Resume')).toBeVisible()
+  await expect(actionPath.getByText('Stop + Review')).toBeVisible()
   await expect(page.locator('.pause-overlay').getByText('Paused')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Resume' })).toBeVisible()
 
@@ -253,6 +258,8 @@ test('guides live recording controls through pause, resume, and discard', async 
   await expect(page.getByLabel('Recorder next-step hint')).toContainText(
     'Pause for a break, or stop when you are ready to review and save.',
   )
+  await expect(actionPath.getByText('Pause')).toBeVisible()
+  await expect(actionPath.getByText('Stop + Review')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Cancel' }).click()

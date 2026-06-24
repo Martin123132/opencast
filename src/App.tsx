@@ -221,6 +221,7 @@ function StudioApp() {
     countdown,
   )
   const recorderNextHint = getRecorderNextHint(status)
+  const recorderActionCues = getRecorderActionCues(status)
   const selectedShareState = selectedRecording ? getRecordingShareState(selectedRecording) : 'private'
   const selectedActiveShareUrl = selectedRecording && selectedShareState === 'shared' ? shareUrl : null
   const selectedShareHint = selectedRecording ? getRecordingShareOwnerHint(selectedRecording) : null
@@ -759,6 +760,16 @@ function StudioApp() {
             <p className="recorder-next-hint" aria-label="Recorder next-step hint" role="note" aria-live="polite">
               <span>Next:</span> {recorderNextHint}
             </p>
+          ) : null}
+          {recorderActionCues.length ? (
+            <div className="recorder-action-path" aria-label="Recorder action path" role="note" aria-live="polite">
+              {recorderActionCues.map((cue) => (
+                <span className={`action-cue ${cue.tone}`} key={cue.label}>
+                  {cue.icon}
+                  {cue.label}
+                </span>
+              ))}
+            </div>
           ) : null}
 
           <div className="stage">
@@ -1968,6 +1979,80 @@ function getRecorderNextHint(status: RecorderStatus) {
   }
 
   return null
+}
+
+function getRecorderActionCues(status: RecorderStatus) {
+  if (status === 'countdown') {
+    return [
+      {
+        label: 'Standby',
+        icon: <Clock size={14} />,
+        tone: 'neutral' as const,
+      },
+      {
+        label: 'Cancel to adjust setup',
+        icon: <X size={14} />,
+        tone: 'danger' as const,
+      },
+    ]
+  }
+
+  if (status === 'recording') {
+    return [
+      {
+        label: 'Pause',
+        icon: <Pause size={14} />,
+        tone: 'secondary' as const,
+      },
+      {
+        label: 'Stop + Review',
+        icon: <Square size={14} fill="currentColor" />,
+        tone: 'danger' as const,
+      },
+      {
+        label: 'Cancel',
+        icon: <Trash2 size={14} />,
+        tone: 'danger' as const,
+      },
+    ]
+  }
+
+  if (status === 'paused') {
+    return [
+      {
+        label: 'Resume',
+        icon: <Play size={14} fill="currentColor" />,
+        tone: 'primary' as const,
+      },
+      {
+        label: 'Stop + Review',
+        icon: <Square size={14} fill="currentColor" />,
+        tone: 'danger' as const,
+      },
+      {
+        label: 'Cancel',
+        icon: <Trash2 size={14} />,
+        tone: 'danger' as const,
+      },
+    ]
+  }
+
+  if (status === 'ready') {
+    return [
+      {
+        label: 'Save to library',
+        icon: <Save size={14} />,
+        tone: 'primary' as const,
+      },
+      {
+        label: 'Discard',
+        icon: <Trash2 size={14} />,
+        tone: 'danger' as const,
+      },
+    ]
+  }
+
+  return []
 }
 
 function isCaptureActive(status: RecorderStatus) {
