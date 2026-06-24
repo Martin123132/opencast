@@ -112,6 +112,7 @@ function StudioApp() {
   const [isSaving, setIsSaving] = useState(false)
   const [isRenaming, setIsRenaming] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [captureDiscardArmed, setCaptureDiscardArmed] = useState(false)
   const [draftDiscardArmed, setDraftDiscardArmed] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
@@ -190,6 +191,7 @@ function StudioApp() {
   const hasReviewDraft = status === 'ready'
   const hasLibraryRecording = recordings.length > 0
   const hasSharedRecording = recordings.some((recording) => recording.shareToken)
+  const captureDiscardPending = captureDiscardArmed && hasActiveCapture
   const firstRunPathReady = useMemo(
     () => ({
       setup: setupComplete,
@@ -228,8 +230,10 @@ function StudioApp() {
     cameraEnabled,
     countdown,
   )
-  const recorderNextHint = getRecorderNextHint(status)
-  const recorderActionCues = getRecorderActionCues(status)
+  const recorderNextHint = captureDiscardPending
+    ? 'Choose Keep recording to continue, or Discard take to stop without saving.'
+    : getRecorderNextHint(status)
+  const recorderActionCues = getRecorderActionCues(status, captureDiscardPending)
   const recorderPhaseSteps = getRecorderPhaseSteps(status)
   const selectedShareState = selectedRecording ? getRecordingShareState(selectedRecording) : 'private'
   const selectedActiveShareUrl = selectedRecording && selectedShareState === 'shared' ? shareUrl : null
@@ -360,6 +364,8 @@ function StudioApp() {
   )
 
   const handleStart = useCallback(() => {
+    setCaptureDiscardArmed(false)
+
     if (recordingBlob && !window.confirm('Discard the unsaved recording draft?')) {
       return
     }
@@ -397,11 +403,31 @@ function StudioApp() {
     recordButtonRef.current?.focus()
   }, [completeSetup, hasReviewDraft, isFirstRunActionDisabled, setupComplete])
 
-  const handleCancel = useCallback(() => {
-    if (!window.confirm('Stop and discard this capture?')) {
-      return
-    }
+  const handlePauseRecording = useCallback(() => {
+    setCaptureDiscardArmed(false)
+    pauseRecording()
+  }, [pauseRecording])
 
+  const handleResumeRecording = useCallback(() => {
+    setCaptureDiscardArmed(false)
+    resumeRecording()
+  }, [resumeRecording])
+
+  const handleStopRecording = useCallback(() => {
+    setCaptureDiscardArmed(false)
+    stopRecording()
+  }, [stopRecording])
+
+  const handleArmCaptureDiscard = useCallback(() => {
+    setCaptureDiscardArmed(true)
+  }, [])
+
+  const handleKeepCapture = useCallback(() => {
+    setCaptureDiscardArmed(false)
+  }, [])
+
+  const handleConfirmCaptureDiscard = useCallback(() => {
+    setCaptureDiscardArmed(false)
     cancelRecording()
   }, [cancelRecording])
 
@@ -893,15 +919,15 @@ function StudioApp() {
 
             {status === 'recording' ? (
               <>
-                <button className="secondary-button" type="button" onClick={pauseRecording}>
+                <button className="secondary-button" type="button" onClick={handlePauseRecording}>
                   <Pause size={17} />
                   Pause
                 </button>
-                <button className="danger-button" type="button" onClick={stopRecording}>
+                <button className="danger-button" type="button" onClick={handleStopRecording}>
                   <Square size={17} fill="currentColor" />
                   Stop
                 </button>
-                <button className="danger-outline-button" type="button" onClick={handleCancel}>
+                <button className="danger-outline-button" type="button" onClick={handleArmCaptureDiscard}>
                   <Trash2 size={16} />
                   Cancel
                 </button>
@@ -910,23 +936,23 @@ function StudioApp() {
 
             {status === 'paused' ? (
               <>
-                <button className="primary-button" type="button" onClick={resumeRecording}>
+                <button className="primary-button" type="button" onClick={handleResumeRecording}>
                   <Play size={17} fill="currentColor" />
                   Resume
                 </button>
-                <button className="danger-button" type="button" onClick={stopRecording}>
+                <button className="danger-button" type="button" onClick={handleStopRecording}>
                   <Square size={17} fill="currentColor" />
                   Stop
                 </button>
-                <button className="danger-outline-button" type="button" onClick={handleCancel}>
+                <button className="danger-outline-button" type="button" onClick={handleArmCaptureDiscard}>
                   <Trash2 size={16} />
                   Cancel
                 </button>
               </>
             ) : null}
 
-            {status === 'requesting' || status === 'countdown' || status === 'stopping' ? (
-              <button className="danger-outline-button" type="button" onClick={handleCancel}>
+            {status === 'requesting' || status === 'countdown' ? (
+              <button className="danger-outline-button" type="button" onClick={handleArmCaptureDiscard}>
                 <X size={16} />
                 Cancel
               </button>
@@ -946,7 +972,26 @@ function StudioApp() {
             ) : null}
           </div>
 
-            {status === 'ready' ? (
+          {captureDiscardPending ? (
+            <section className="capture-discard-card" aria-label="Discard live capture" role="status">
+              <div className="capture-discard-copy">
+                <strong>Discard live take?</strong>
+                <p>Keep recording if this was a miss-click. Discard stops capture and removes the draft.</p>
+              </div>
+              <div className="capture-discard-actions">
+                <button className="secondary-button compact" type="button" onClick={handleKeepCapture}>
+                  <Play size={16} />
+                  Keep recording
+                </button>
+                <button className="danger-button compact" type="button" onClick={handleConfirmCaptureDiscard}>
+                  <Trash2 size={16} />
+                  Discard take
+                </button>
+              </div>
+            </section>
+          ) : null}
+
+          {status === 'ready' ? (
             <section className="review-card" aria-label="Review recording">
               <div className="review-heading">
                 <span className="row-icon" aria-hidden="true">
@@ -2165,7 +2210,22 @@ function getRecorderNextHint(status: RecorderStatus) {
   return null
 }
 
-function getRecorderActionCues(status: RecorderStatus) {
+function getRecorderActionCues(status: RecorderStatus, captureDiscardArmed = false) {
+  if (captureDiscardArmed && isCaptureActive(status)) {
+    return [
+      {
+        label: 'Keep recording',
+        icon: <Play size={14} fill="currentColor" />,
+        tone: 'primary' as const,
+      },
+      {
+        label: 'Discard take',
+        icon: <Trash2 size={14} />,
+        tone: 'danger' as const,
+      },
+    ]
+  }
+
   if (status === 'countdown') {
     return [
       {

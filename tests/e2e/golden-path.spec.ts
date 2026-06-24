@@ -317,8 +317,30 @@ test('guides live recording controls through pause, resume, and discard', async 
   await expect(actionPath.getByText('Pause')).toBeVisible()
   await expect(actionPath.getByText('Stop + Review')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
-  page.once('dialog', (dialog) => dialog.accept())
+
   await page.getByRole('button', { name: 'Cancel' }).click()
+  const discardLiveCapture = page.getByLabel('Discard live capture')
+  await expect(page.getByLabel('Recorder next-step hint')).toContainText(
+    'Choose Keep recording to continue, or Discard take to stop without saving.',
+  )
+  await expect(actionPath.getByText('Keep recording')).toBeVisible()
+  await expect(actionPath.getByText('Discard take')).toBeVisible()
+  await expect(discardLiveCapture.getByText('Discard live take?')).toBeVisible()
+  await expect(discardLiveCapture.getByText('Keep recording if this was a miss-click.')).toBeVisible()
+  await expect(discardLiveCapture.getByRole('button', { name: 'Keep recording' })).toBeVisible()
+  await expect(discardLiveCapture.getByRole('button', { name: 'Discard take' })).toBeVisible()
+  await discardLiveCapture.scrollIntoViewIfNeeded()
+  await saveSmokeScreenshot(page, 'recording-controls-cancel-confirmation.png')
+
+  await discardLiveCapture.getByRole('button', { name: 'Keep recording' }).click()
+  await expect(discardLiveCapture).toBeHidden()
+  await expect(page.getByLabel('Recorder next-step hint')).toContainText(
+    'Pause for a break, or stop when you are ready to review and save.',
+  )
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await discardLiveCapture.getByRole('button', { name: 'Discard take' }).click()
 
   await expect(page.getByRole('heading', { name: 'Review' })).toBeHidden()
   await expect(page.getByText('No recordings yet')).toBeVisible()

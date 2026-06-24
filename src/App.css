@@ -769,6 +769,46 @@ button {
   color: var(--accent-ink);
 }
 
+.capture-discard-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(218, 64, 39, 0.3);
+  border-radius: 8px;
+  color: var(--danger);
+  background: rgba(218, 64, 39, 0.06);
+}
+
+.capture-discard-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.capture-discard-copy strong {
+  color: var(--danger);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.capture-discard-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.capture-discard-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .readout-pill.warning {
   color: var(--warning);
   border-color: rgba(217, 119, 6, 0.35);
@@ -1819,6 +1859,7 @@ a:focus-visible {
   }
 
   .setup-card,
+  .capture-discard-card,
   .save-row,
   .library-tools,
   .rename-row {
@@ -1827,6 +1868,9 @@ a:focus-visible {
   }
 
   .setup-card .primary-button,
+  .capture-discard-actions,
+  .capture-discard-actions .secondary-button,
+  .capture-discard-actions .danger-button,
   .library-tools .secondary-button,
   .library-tools input,
   .library-tools select,
