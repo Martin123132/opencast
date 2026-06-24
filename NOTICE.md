@@ -17,4 +17,6 @@ Commercial use requires a separate written license from the licensor. Commercial
 
 opencast was created by Martin Ollett and is owned/licensed by TWO HANDS NETWORK LTD.
 
+Contact the COO of TWO HANDS NETWORK LTD to discuss commercial licensing.
+
 This notice does not limit rights you may have under fair use, fair dealing, or other applicable law. It is intended to make the licensor's permission boundaries clear before the repository is made public.

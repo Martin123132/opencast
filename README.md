@@ -84,3 +84,11 @@ Share lifecycle evidence draft generator:
   - `--output <path>`: custom output directory
   - `--source-sha <sha>`: include source commit/branch
   - `--ci-url <url>`: CI run URL placeholder or value
+
+## License
+
+ShareFrame/opencast is source-available software, not open-source software.
+
+Personal, hobby, research, educational, public-interest, and other non-commercial uses are permitted under the PolyForm Noncommercial License 1.0.0 in [`LICENSE`](./LICENSE).
+
+Commercial use requires a separate written license from TWO HANDS NETWORK LTD. Contact the COO of TWO HANDS NETWORK LTD to discuss commercial licensing before using this code, its tests, documentation, data formats, or derived materials in a paid product, hosted service, managed service, enterprise product, commercial developer tool, commercial AI system, or commercial AI training/evaluation pipeline.

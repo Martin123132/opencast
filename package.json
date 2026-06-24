@@ -2,7 +2,7 @@
   "name": "opencast",
   "version": "0.1.0",
   "description": "ShareFrame local-first screen recorder and private sharing prototype.",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",
     "url": "https://github.com/Martin123132/opencast.git"
