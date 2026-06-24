@@ -490,8 +490,14 @@ test('applies password expiry and playback-only share settings for guests', asyn
 
   await expect(page.locator('video.shared-video')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Protected share fixture' })).toBeVisible()
+  const guestAccess = page.getByLabel('Guest access summary')
+  await expect(guestAccess.getByText('Guest access')).toBeVisible()
+  await expect(guestAccess.getByText('Password required')).toBeVisible()
+  await expect(guestAccess.getByText(/Expires/)).toBeVisible()
+  await expect(guestAccess.getByText('Playback only')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Download' })).toBeHidden()
 
+  await guestAccess.scrollIntoViewIfNeeded()
   await saveSmokeScreenshot(page, 'protected-share-playback-only.png')
   expect(consoleMessages()).toEqual([])
 })
@@ -560,6 +566,7 @@ test('revokes a shared link, blocks old guest links, and recreates', async ({ pa
   await expect(page.getByText('This share link is unavailable.')).toBeVisible()
   await page.goto(recreatedHref!)
   await expect(page.locator('.shared-video')).toBeVisible()
+  await expect(page.getByLabel('Guest access summary').getByText('Downloads allowed')).toBeVisible()
   await expect(page.getByText('This share link is unavailable.')).toBeHidden()
   await expect(page.getByText('This share link is no longer available.')).toBeHidden()
 
@@ -593,6 +600,7 @@ test('revokes a shared link, blocks old guest links, and recreates', async ({ pa
   expect(postUpdateHref).toBeTruthy()
   await page.goto(postUpdateHref!)
   await expect(page.locator('.shared-video')).toBeVisible()
+  await expect(page.getByLabel('Guest access summary').getByText('No password')).toBeVisible()
   await expect(page.getByText('This share link is unavailable.')).toBeHidden()
   await expect(page.getByText('This share link is no longer available.')).toBeHidden()
 
@@ -703,6 +711,11 @@ test('keeps the guided path usable on a mobile viewport', async ({ page, request
   await expect(page.getByText('Shared recording')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Mobile fixture' })).toBeVisible()
   await expect(page.locator('video.shared-video')).toBeVisible()
+  const mobileGuestAccess = page.getByLabel('Guest access summary')
+  await expect(mobileGuestAccess.getByText('Guest access')).toBeVisible()
+  await expect(mobileGuestAccess.getByText('No password')).toBeVisible()
+  await expect(mobileGuestAccess.getByText('No expiry')).toBeVisible()
+  await expect(mobileGuestAccess.getByText('Downloads allowed')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Download' })).toBeVisible()
   await expectNoHorizontalOverflow(page)
 

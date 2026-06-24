@@ -1630,6 +1630,40 @@ a:focus-visible {
   font-size: 22px;
 }
 
+.guest-access-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.guest-access-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.guest-access-heading strong {
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.guest-access-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.guest-access-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .share-empty {
   min-height: 360px;
   display: grid;

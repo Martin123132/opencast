@@ -1860,6 +1860,30 @@ function ShareView({ token }: { token: string }) {
               <p>
                 {formatDate(recording.createdAt)} / {formatTime(recording.durationMs ?? 0)}
               </p>
+              <section className="guest-access-card" aria-label="Guest access summary">
+                <div className="guest-access-heading">
+                  <strong>Guest access</strong>
+                  <p>These settings match the active share link from the owner.</p>
+                </div>
+                <div className="guest-access-grid">
+                  <StatusChip
+                    tone={recording.sharePasswordProtected ? 'good' : 'neutral'}
+                    icon={recording.sharePasswordProtected ? <ShieldCheck size={15} /> : <Lock size={15} />}
+                    label={recording.sharePasswordProtected ? 'Password required' : 'No password'}
+                  />
+                  <StatusChip
+                    tone={recording.shareExpiresAt ? 'good' : 'neutral'}
+                    icon={<Clock size={15} />}
+                    label={formatShareExpirySummary(recording.shareExpiresAt ?? '')}
+                  />
+                  <StatusChip
+                    tone={recording.shareDownloadEnabled ? 'good' : 'neutral'}
+                    icon={<Download size={15} />}
+                    label={recording.shareDownloadEnabled ? 'Downloads allowed' : 'Playback only'}
+                  />
+                  <StatusChip tone="neutral" icon={<Eye size={15} />} label={`${recording.viewCount} views`} />
+                </div>
+              </section>
               {downloadSource ? (
                 <a className="download-link" href={downloadSource}>
                   <Download size={16} />
