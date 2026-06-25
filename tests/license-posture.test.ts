@@ -19,9 +19,16 @@ test('root package metadata points to the repository license file', async () => 
 })
 
 test('public docs state the source-available non-commercial posture', async () => {
+  const license = await readPublicFile('LICENSE')
   const readme = await readPublicFile('README.md')
   const notice = await readPublicFile('NOTICE.md')
   const commercialLicense = await readPublicFile('COMMERCIAL-LICENSE.md')
+
+  assertIncludes(license, [
+    '## Contact us',
+    'For collaboration, information on existing products, or other enquiries, please contact (via Email):',
+    'Glyn : glyn@twohandsnetwork.co.uk',
+  ])
 
   assertIncludes(readme, [
     'source-available software, not open-source software',
