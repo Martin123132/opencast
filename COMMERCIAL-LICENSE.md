@@ -22,4 +22,8 @@ Commercial license requests should include:
 
 Contact the COO of TWO HANDS NETWORK LTD to discuss commercial licensing.
 
+For collaboration, information on existing products, or other enquiries, please contact (via Email):
+
+Glyn : glyn@twohandsnetwork.co.uk
+
 No commercial license is granted unless agreed in writing by TWO HANDS NETWORK LTD.

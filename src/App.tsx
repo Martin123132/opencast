@@ -60,6 +60,13 @@ type PendingDelete = {
   timerId: ReturnType<typeof setTimeout>
 }
 
+type PreflightItem = {
+  label: string
+  value: string
+  icon: ReactNode
+  tone: 'good' | 'warning' | 'bad' | 'neutral'
+}
+
 const setupStorageKey = 'opencast.setup.v1'
 const undoDeleteWindowMs = 4000
 const copyBlockedStatus =
@@ -239,6 +246,14 @@ function StudioApp() {
       : getRecorderNextHint(status)
   const recorderActionCues = getRecorderActionCues(status, captureDiscardPending, draftRestartPending)
   const recorderPhaseSteps = getRecorderPhaseSteps(status)
+  const recorderPreflight = getRecorderPreflightItems({
+    captureSupported,
+    storageCompliant,
+    screenReady,
+    micEnabled,
+    cameraEnabled,
+    status,
+  })
   const selectedShareState = selectedRecording ? getRecordingShareState(selectedRecording) : 'private'
   const selectedActiveShareUrl = selectedRecording && selectedShareState === 'shared' ? shareUrl : null
   const selectedShareHint = selectedRecording ? getRecordingShareOwnerHint(selectedRecording) : null
@@ -836,6 +851,26 @@ function StudioApp() {
               </li>
             ))}
           </ol>
+
+          <section className="recorder-preflight" aria-label="Recorder preflight">
+            <div className="preflight-copy">
+              <span>Preflight</span>
+              <strong>Check storage, source, and inputs before recording.</strong>
+            </div>
+            <div className="preflight-grid">
+              {recorderPreflight.map((item) => (
+                <span className={`preflight-item ${item.tone}`} key={item.label}>
+                  <span className="preflight-icon" aria-hidden="true">
+                    {item.icon}
+                  </span>
+                  <span className="preflight-text">
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </span>
+                </span>
+              ))}
+            </div>
+          </section>
 
           <div className="stage">
             <canvas ref={canvasRef} className="recording-canvas" />
@@ -2351,6 +2386,57 @@ function getRecorderActionCues(
   }
 
   return []
+}
+
+function getRecorderPreflightItems({
+  captureSupported,
+  storageCompliant,
+  screenReady,
+  micEnabled,
+  cameraEnabled,
+  status,
+}: {
+  captureSupported: boolean
+  storageCompliant: boolean
+  screenReady: boolean
+  micEnabled: boolean
+  cameraEnabled: boolean
+  status: RecorderStatus
+}): PreflightItem[] {
+  const sourceNeedsAttention = status === 'error'
+
+  return [
+    {
+      label: 'Storage',
+      value: storageCompliant ? 'D-drive ready' : 'Move to D:',
+      icon: <HardDrive size={16} />,
+      tone: storageCompliant ? 'good' : 'bad',
+    },
+    {
+      label: 'Browser',
+      value: captureSupported ? 'Capture ready' : 'Browser blocked',
+      icon: captureSupported ? <CheckCircle2 size={16} /> : <X size={16} />,
+      tone: captureSupported ? 'good' : 'bad',
+    },
+    {
+      label: 'Source',
+      value: sourceNeedsAttention ? 'Needs attention' : screenReady ? 'Source selected' : 'Choose source',
+      icon: <MonitorUp size={16} />,
+      tone: sourceNeedsAttention ? 'bad' : screenReady ? 'good' : 'warning',
+    },
+    {
+      label: 'Mic',
+      value: micEnabled ? 'Mic on' : 'Mic off',
+      icon: <Mic size={16} />,
+      tone: micEnabled ? 'good' : 'neutral',
+    },
+    {
+      label: 'Camera',
+      value: cameraEnabled ? 'Camera on' : 'Camera off',
+      icon: <Camera size={16} />,
+      tone: cameraEnabled ? 'good' : 'neutral',
+    },
+  ]
 }
 
 function getRecorderPhaseSteps(status: RecorderStatus) {

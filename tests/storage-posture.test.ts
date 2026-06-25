@@ -8,8 +8,12 @@ const cDrivePathPattern = /\bC:[\\/]/i
 const sharedPathEntries = [
   '.env.example',
   '.github',
+  'COMMERCIAL-LICENSE.md',
+  'MANUAL_QA.md',
+  'NOTICE.md',
   'README.md',
   'ROADMAP.md',
+  'SHARE_LIFECYCLE_PRIVACY_CHECKLIST.md',
   'package.json',
   'playwright.config.ts',
   'scripts',

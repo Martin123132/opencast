@@ -58,6 +58,12 @@ Shared privacy contract:
 
 Keep this checklist in scope when touching share create/revoke/recreate behavior or guest access handling.
 
+Manual browser-capture QA:
+
+- [`MANUAL_QA.md`](./MANUAL_QA.md)
+
+Use this checklist for human-only browser permission prompts, real screen capture, mic/camera toggles, and share revoke/playback checks before release.
+
 The browser E2E suite runs Edge against isolated local ports and writes its reports,
 screenshots, traces, and test data under D-drive paths:
 
@@ -92,3 +98,7 @@ ShareFrame/opencast is source-available software, not open-source software.
 Personal, hobby, research, educational, public-interest, and other non-commercial uses are permitted under the PolyForm Noncommercial License 1.0.0 in [`LICENSE`](./LICENSE).
 
 Commercial use requires a separate written license from TWO HANDS NETWORK LTD. Contact the COO of TWO HANDS NETWORK LTD to discuss commercial licensing before using this code, its tests, documentation, data formats, or derived materials in a paid product, hosted service, managed service, enterprise product, commercial developer tool, commercial AI system, or commercial AI training/evaluation pipeline.
+
+For collaboration, information on existing products, or other enquiries, please contact (via Email):
+
+Glyn : glyn@twohandsnetwork.co.uk

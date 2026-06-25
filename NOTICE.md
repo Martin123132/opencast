@@ -19,4 +19,8 @@ opencast was created by Martin Ollett and is owned/licensed by TWO HANDS NETWORK
 
 Contact the COO of TWO HANDS NETWORK LTD to discuss commercial licensing.
 
+For collaboration, information on existing products, or other enquiries, please contact (via Email):
+
+Glyn : glyn@twohandsnetwork.co.uk
+
 This notice does not limit rights you may have under fair use, fair dealing, or other applicable law. It is intended to make the licensor's permission boundaries clear before the repository is made public.

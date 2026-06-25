@@ -553,6 +553,109 @@
   background: rgba(15, 118, 110, 0.12);
 }
 
+.recorder-preflight {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr);
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.preflight-copy {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+}
+
+.preflight-copy span {
+  color: var(--accent-ink);
+  font-size: 11px;
+  font-weight: 780;
+  text-transform: uppercase;
+}
+
+.preflight-copy strong {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.preflight-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 6px;
+}
+
+.preflight-item {
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--surface);
+}
+
+.preflight-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 7px;
+  background: var(--panel);
+}
+
+.preflight-text {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.preflight-text span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 760;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.preflight-text strong {
+  overflow: hidden;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preflight-item.good {
+  color: var(--accent-ink);
+  border-color: rgba(15, 118, 110, 0.3);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.preflight-item.warning {
+  color: #935f00;
+  border-color: rgba(245, 158, 11, 0.32);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.preflight-item.bad {
+  color: var(--danger);
+  border-color: rgba(218, 64, 39, 0.32);
+  background: rgba(218, 64, 39, 0.08);
+}
+
 .countdown-overlay span,
 .pause-overlay span {
   font-size: 14px;
@@ -1858,6 +1961,10 @@ a:focus-visible {
     gap: 8px;
   }
 
+  .recorder-preflight {
+    grid-template-columns: 1fr;
+  }
+
   .capture-input-status {
     gap: 6px;
   }
@@ -1976,5 +2083,9 @@ a:focus-visible {
     padding: 8px;
     grid-template-columns: 1fr;
     font-size: 11px;
+  }
+
+  .preflight-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

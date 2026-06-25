@@ -4,6 +4,10 @@ import { test } from 'node:test'
 import path from 'node:path'
 
 const expectedPackageLicense = 'SEE LICENSE IN LICENSE'
+const contactFragments = [
+  'For collaboration, information on existing products, or other enquiries, please contact (via Email):',
+  'Glyn : glyn@twohandsnetwork.co.uk',
+]
 
 test('root package metadata points to the repository license file', async () => {
   const packagePath = path.resolve(process.cwd(), 'package.json')
@@ -26,8 +30,7 @@ test('public docs state the source-available non-commercial posture', async () =
 
   assertIncludes(license, [
     '## Contact us',
-    'For collaboration, information on existing products, or other enquiries, please contact (via Email):',
-    'Glyn : glyn@twohandsnetwork.co.uk',
+    ...contactFragments,
   ])
 
   assertIncludes(readme, [
@@ -35,6 +38,7 @@ test('public docs state the source-available non-commercial posture', async () =
     'PolyForm Noncommercial License 1.0.0',
     'Commercial use requires a separate written license from TWO HANDS NETWORK LTD',
     'Contact the COO of TWO HANDS NETWORK LTD',
+    ...contactFragments,
   ])
 
   assertIncludes(notice, [
@@ -43,12 +47,14 @@ test('public docs state the source-available non-commercial posture', async () =
     'Commercial use requires a separate written license',
     'Contact the COO of TWO HANDS NETWORK LTD',
     'TWO HANDS NETWORK LTD',
+    ...contactFragments,
   ])
 
   assertIncludes(commercialLicense, [
     'personal and non-commercial use',
     'Commercial use is not included in the public license',
     'Contact the COO of TWO HANDS NETWORK LTD',
+    ...contactFragments,
     'No commercial license is granted unless agreed in writing',
   ])
 })
