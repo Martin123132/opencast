@@ -4,11 +4,21 @@
   isolation: isolate;
   min-height: 100svh;
   color: var(--text);
+  overflow-x: hidden;
+}
+
+.app-shell {
   background:
     linear-gradient(180deg, rgba(245, 247, 248, 0.94) 0%, rgba(245, 247, 248, 0.78) 44%, rgba(245, 247, 248, 0.96) 100%),
     url("./assets/shareframe-wallpaper.png") center / cover no-repeat fixed,
     var(--page);
-  overflow-x: hidden;
+}
+
+.share-shell {
+  background:
+    linear-gradient(180deg, rgba(245, 247, 248, 0.92) 0%, rgba(245, 247, 248, 0.74) 48%, rgba(245, 247, 248, 0.95) 100%),
+    url("./assets/shareframe-guest-wallpaper.png") center / cover no-repeat fixed,
+    var(--page);
 }
 
 .topbar {
@@ -1883,17 +1893,18 @@ a:focus-visible {
   padding: 18px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--panel);
+  background: rgba(240, 243, 244, 0.86);
+  backdrop-filter: blur(14px);
 }
 
 .share-gate-card.protected {
   border-color: rgba(15, 118, 110, 0.24);
-  background: rgba(15, 118, 110, 0.08);
+  background: rgba(225, 242, 240, 0.86);
 }
 
 .share-gate-card.unavailable {
   border-color: rgba(218, 64, 39, 0.22);
-  background: rgba(218, 64, 39, 0.06);
+  background: rgba(253, 236, 232, 0.86);
 }
 
 .share-gate-icon {
