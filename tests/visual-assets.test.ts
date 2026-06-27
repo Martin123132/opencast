@@ -11,6 +11,8 @@ test('ShareFrame wallpaper asset is wired into the app shell', async () => {
   const assetStat = await stat(wallpaperPath)
 
   assert.ok(css.includes('url("./assets/shareframe-wallpaper.png")'), 'app shell should reference the custom wallpaper')
+  assert.ok(css.includes('.stage'), 'recorder stage styles should stay explicit')
+  assert.ok(css.includes('.stage-empty::before'), 'idle recorder stage should have a capture-frame wallpaper treatment')
   assert.ok(css.includes('rgba(245, 247, 248'), 'wallpaper should keep a readability wash over the app chrome')
   assert.ok(assetStat.size > 500_000, 'wallpaper should be a real generated bitmap, not a placeholder')
   assert.deepEqual(
