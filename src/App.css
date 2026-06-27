@@ -1,20 +1,29 @@
 .app-shell,
 .share-shell {
+  position: relative;
+  isolation: isolate;
   min-height: 100svh;
   color: var(--text);
-  background: var(--page);
+  background:
+    linear-gradient(180deg, rgba(245, 247, 248, 0.94) 0%, rgba(245, 247, 248, 0.78) 44%, rgba(245, 247, 248, 0.96) 100%),
+    url("./assets/shareframe-wallpaper.png") center / cover no-repeat fixed,
+    var(--page);
   overflow-x: hidden;
 }
 
 .topbar {
+  position: relative;
+  z-index: 1;
   min-height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
   padding: 0 28px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  border-bottom: 1px solid rgba(220, 227, 232, 0.82);
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 16px 44px rgba(13, 20, 28, 0.08);
+  backdrop-filter: blur(18px);
 }
 
 .topbar-actions {
@@ -85,6 +94,8 @@
 }
 
 .workspace {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr) 410px;
   align-items: start;
@@ -99,8 +110,9 @@
 .share-player {
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 20px 56px rgba(13, 20, 28, 0.12);
+  backdrop-filter: blur(18px);
 }
 
 .recorder-panel,
