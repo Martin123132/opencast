@@ -64,6 +64,9 @@ Optional flags:
 powershell -ExecutionPolicy Bypass -File scripts\start-shareframe.ps1 -DataRoot D:\open-source\opencast-data -Port 4174 -NoBrowser
 ```
 
+Add `-DryRun` to check the resolved D-drive paths and selected port without installing,
+building, opening the browser, or starting the server.
+
 ## Checks
 
 ```powershell

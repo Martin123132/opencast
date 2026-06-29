@@ -4,7 +4,8 @@ param(
   [string]$HostAddress = $(if ($env:OPENCAST_HOST) { $env:OPENCAST_HOST } else { '127.0.0.1' }),
   [switch]$SkipInstall,
   [switch]$SkipBuild,
-  [switch]$NoBrowser
+  [switch]$NoBrowser,
+  [switch]$DryRun
 )
 
 Set-StrictMode -Version Latest
@@ -123,6 +124,16 @@ $env:OPENCAST_HOST = $HostAddress
 $env:OPENCAST_PORT = [string]$selectedPort
 $env:OPENCAST_DATA_ROOT = $resolvedDataRoot
 
+$appUrl = "http://$HostAddress`:$selectedPort/"
+if ($DryRun) {
+  Write-Host ''
+  Write-Host "ShareFrame storage: $resolvedDataRoot"
+  Write-Host "ShareFrame app:     $appUrl"
+  Write-Host "ShareFrame temp:    $tempRoot"
+  Write-Host 'Dry run complete. No install, build, browser, or server start was run.'
+  exit 0
+}
+
 if (-not $SkipInstall -and -not (Test-Path (Join-Path $repoRoot 'node_modules'))) {
   Write-Host 'Installing ShareFrame dependencies...'
   Invoke-Npm -Arguments @('install')
@@ -138,7 +149,6 @@ if (-not $SkipBuild) {
   Invoke-Npm -Arguments @('run', 'build')
 }
 
-$appUrl = "http://$HostAddress`:$selectedPort/"
 Write-Host ''
 Write-Host "ShareFrame storage: $resolvedDataRoot"
 Write-Host "ShareFrame app:     $appUrl"
