@@ -93,6 +93,7 @@ function StudioApp() {
     elapsedMs,
     durationMs,
     recordingBlob,
+    thumbnailBlob,
     previewUrl,
     error,
     startRecording,
@@ -483,6 +484,7 @@ function StudioApp() {
     try {
       const saved = await uploadRecording({
         blob: recordingBlob,
+        thumbnail: thumbnailBlob,
         title,
         durationMs,
       })
@@ -497,7 +499,7 @@ function StudioApp() {
     } finally {
       setIsSaving(false)
     }
-  }, [applyShareDefaults, durationMs, loadLibrary, recordingBlob, resetRecording, title])
+  }, [applyShareDefaults, durationMs, loadLibrary, recordingBlob, resetRecording, thumbnailBlob, title])
 
   const handleRename = useCallback(async () => {
     const nextTitle = selectedTitle.trim()
@@ -1216,8 +1218,12 @@ function StudioApp() {
                   type="button"
                   onClick={() => handleSelectRecording(recording)}
                 >
-                  <span className="row-icon" aria-hidden="true">
-                    <Play size={16} fill="currentColor" />
+                  <span className={`row-icon ${recording.thumbnailUrl ? 'poster' : ''}`} aria-hidden="true">
+                    {recording.thumbnailUrl ? (
+                      <img alt="" src={recording.thumbnailUrl} loading="lazy" />
+                    ) : (
+                      <Play size={16} fill="currentColor" />
+                    )}
                   </span>
                   <span>
                     <strong>{recording.title}</strong>
@@ -1286,13 +1292,14 @@ function StudioApp() {
                 key={selectedRecording.id}
                 className="library-video"
                 src={`/api/recordings/${selectedRecording.id}/video`}
+                poster={selectedRecording.thumbnailUrl ?? undefined}
                 controls
                 playsInline
               />
               <div className="viewer-meta">
                 <div>
                   <strong>{selectedRecording.title}</strong>
-                  <small>Duration {formatTime(selectedRecording.durationMs ?? 0)}</small>
+                  <small>{formatDurationLabel(selectedRecording.durationMs)}</small>
                 </div>
                 <StatusChip
                   tone={getShareStateTone(selectedShareState)}
@@ -1359,6 +1366,10 @@ function StudioApp() {
                 <div>
                   <dt>Size</dt>
                   <dd>{formatBytes(selectedRecording.sizeBytes)}</dd>
+                </div>
+                <div>
+                  <dt>Poster</dt>
+                  <dd>{selectedRecording.thumbnailUrl ? 'Captured' : 'Not captured'}</dd>
                 </div>
                 <div>
                   <dt>Views</dt>
@@ -1975,7 +1986,7 @@ function ShareView({ token }: { token: string }) {
             <div className="shared-meta">
               <h2>{recording.title}</h2>
               <p>
-                {formatDate(recording.createdAt)} / {formatTime(recording.durationMs ?? 0)}
+                {formatDate(recording.createdAt)} / {formatDurationLabel(recording.durationMs)}
               </p>
               <section className="guest-access-card" aria-label="Guest access summary">
                 <div className="guest-access-heading">
@@ -2844,6 +2855,10 @@ function formatTime(value: number) {
   const seconds = totalSeconds % 60
 
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+function formatDurationLabel(value: number | null) {
+  return value === null ? 'Duration unknown' : `Duration ${formatTime(value)}`
 }
 
 function normalizeFileName(value: string) {

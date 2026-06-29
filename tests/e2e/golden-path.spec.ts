@@ -14,6 +14,10 @@ const screenshotRoot = path.join(
   ),
   'screenshots',
 )
+const thumbnailFixture = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8BQDwAFgwJ/lK3LRwAAAABJRU5ErkJggg==',
+  'base64',
+)
 
 async function installRecorderStub(page: Page) {
   await page.addInitScript(() => {
@@ -414,6 +418,7 @@ test('shows library recordings, validates rename, and opens the share modal', as
   )
   await expect(selected.getByLabel('Recording details').getByText('Updated')).toBeVisible()
   await expect(selected.getByLabel('Recording details').getByText('Share state')).toBeVisible()
+  await expect(selected.locator('video.library-video')).toHaveAttribute('poster', /\/api\/recordings\/.+\/thumbnail/)
   await expect(selected.getByLabel('Share state overview')).toBeVisible()
   const ownerPath = selected.getByLabel('Owner path')
   await expect(ownerPath.getByText('Ready to share this recording')).toBeVisible()
@@ -422,6 +427,8 @@ test('shows library recordings, validates rename, and opens the share modal', as
   await expect(selected.getByRole('button', { name: 'Rename' })).toBeDisabled()
   await expect(selected.getByLabel('Recording details').getByText('Created')).toBeVisible()
   await expect(selected.getByLabel('Recording details').getByText('Size')).toBeVisible()
+  await expect(selected.getByLabel('Recording details').getByText('Poster')).toBeVisible()
+  await expect(selected.getByLabel('Recording details').getByText('Captured')).toBeVisible()
   await expect(selected.getByLabel('Recording details').getByText('Views')).toBeVisible()
   await expect(selected.getByLabel('Recording details').getByText('Expiry', { exact: true })).toBeVisible()
   await expect(selected.getByLabel('Recording details').getByText('No expiry')).toBeVisible()
@@ -478,6 +485,10 @@ test('shows library recordings, validates rename, and opens the share modal', as
   const selectedGuestLink = selected.getByRole('link', { name: 'View as guest' })
   await expect(selectedGuestLink).toBeVisible()
   await expect(selectedGuestLink).toHaveAttribute('href', /\/s\//)
+
+  const thumbnailResponse = await request.get(recording.thumbnailUrl)
+  expect(thumbnailResponse.ok()).toBeTruthy()
+  expect(thumbnailResponse.headers()['content-type']).toContain('image/png')
 
   expect(recording.id).toBeTruthy()
   expect(consoleMessages()).toEqual([])
@@ -857,6 +868,11 @@ async function createRecording(request: APIRequestContext, title: string) {
     multipart: {
       title,
       durationMs: '2000',
+      thumbnail: {
+        name: 'poster.png',
+        mimeType: 'image/png',
+        buffer: thumbnailFixture,
+      },
       video: {
         name: 'fixture.webm',
         mimeType: 'video/webm',
@@ -866,7 +882,9 @@ async function createRecording(request: APIRequestContext, title: string) {
   })
 
   expect(response.ok()).toBeTruthy()
-  const body = (await response.json()) as { recording: { id: string; title: string } }
+  const body = (await response.json()) as {
+    recording: { id: string; title: string; thumbnailUrl: string }
+  }
   return body.recording
 }
 

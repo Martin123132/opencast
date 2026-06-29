@@ -4,6 +4,8 @@ export type Recording = {
   createdAt: string
   updatedAt: string
   mimeType: string
+  thumbnailUrl: string | null
+  thumbnailMimeType: string | null
   sizeBytes: number
   durationMs: number | null
   shareToken: string | null

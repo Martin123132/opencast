@@ -23,6 +23,7 @@ export function isDDrivePath(value: string) {
 
 export const storagePaths = {
   recordingsDir: path.join(appConfig.dataRoot, 'recordings'),
+  thumbnailsDir: path.join(appConfig.dataRoot, 'thumbnails'),
   indexFile: path.join(appConfig.dataRoot, 'index.json'),
   shareSecretFile: path.join(appConfig.dataRoot, 'share-secret.key'),
 }

@@ -6,6 +6,7 @@ import {
   ensureStorage,
   getRecording,
   getRecordingByShareToken,
+  getThumbnailFile,
   getVideoFile,
   isShareExpired,
   listRecordings,
@@ -14,6 +15,7 @@ import {
   revokeShare,
   updateRecording,
   type ShareSettingsInput,
+  type ThumbnailUpload,
   type Recording,
   saveRecording,
   toPublicRecording,
@@ -33,7 +35,7 @@ await ensureStorage()
 
 await app.register(multipart, {
   limits: {
-    files: 1,
+    files: 2,
     fileSize: 1024 * 1024 * 1024 * 2,
   },
 })
@@ -60,10 +62,20 @@ app.post('/api/recordings', async (request, reply) => {
   const parts = request.parts()
   let title = ''
   let durationMs: number | null = null
+  let thumbnail: ThumbnailUpload | null = null
 
   for await (const part of parts) {
     if (part.type === 'file') {
-      const recording = await saveRecording({ file: part, title, durationMs })
+      if (part.fieldname === 'thumbnail') {
+        thumbnail = await readThumbnailUpload(part)
+        continue
+      }
+
+      if (part.fieldname !== 'video') {
+        continue
+      }
+
+      const recording = await saveRecording({ file: part, title, durationMs, thumbnail })
       return reply.code(201).send({ recording: toPublicRecording(recording) })
     }
 
@@ -78,6 +90,27 @@ app.post('/api/recordings', async (request, reply) => {
   }
 
   return reply.code(400).send({ error: 'Missing recording upload' })
+})
+
+app.get('/api/recordings/:id/thumbnail', async (request, reply) => {
+  const { id } = request.params as { id: string }
+  const recording = await getRecording(id)
+
+  if (!recording) {
+    return reply.code(404).send({ error: 'Recording not found' })
+  }
+
+  const thumbnail = await getThumbnailFile(recording)
+
+  if (!thumbnail) {
+    return reply.code(404).send({ error: 'Recording thumbnail not found' })
+  }
+
+  return reply
+    .header('Content-Type', thumbnail.mimeType)
+    .header('Content-Length', thumbnail.size)
+    .header('Cache-Control', 'no-store')
+    .send(thumbnail.stream())
 })
 
 app.get('/api/recordings/:id', async (request, reply) => {
@@ -350,6 +383,19 @@ function parseShareSettings(source: unknown): ShareSettingsInput {
   }
 
   return settings
+}
+
+async function readThumbnailUpload(part: { file: AsyncIterable<Buffer | Uint8Array>; mimetype: string }) {
+  const chunks: Buffer[] = []
+
+  for await (const chunk of part.file) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  }
+
+  return {
+    data: Buffer.concat(chunks),
+    mimetype: part.mimetype || 'image/webp',
+  }
 }
 
 function normalizeExpiry(value: string | null | undefined) {

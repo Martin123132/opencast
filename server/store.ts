@@ -14,6 +14,8 @@ export type Recording = {
   updatedAt: string
   fileName: string
   mimeType: string
+  thumbnailFileName: string | null
+  thumbnailMimeType: string | null
   sizeBytes: number
   durationMs: number | null
   shareToken: string | null
@@ -31,12 +33,18 @@ export type ShareSettingsInput = {
   password?: string | null
 }
 
+export type ThumbnailUpload = {
+  data: Buffer
+  mimetype: string
+}
+
 type RecordingIndex = {
   recordings: Recording[]
 }
 
 export async function ensureStorage() {
   await mkdir(storagePaths.recordingsDir, { recursive: true })
+  await mkdir(storagePaths.thumbnailsDir, { recursive: true })
 
   try {
     await readFile(storagePaths.indexFile, 'utf8')
@@ -64,10 +72,12 @@ export async function saveRecording({
   file,
   title,
   durationMs,
+  thumbnail,
 }: {
   file: MultipartFile
   title: string
   durationMs: number | null
+  thumbnail?: ThumbnailUpload | null
 }) {
   await ensureStorage()
 
@@ -76,9 +86,15 @@ export async function saveRecording({
   const fileName = `${id}-${safeTitle}.webm`
   const finalPath = path.join(storagePaths.recordingsDir, fileName)
   const tempPath = `${finalPath}.uploading`
+  const storedThumbnail = normalizeThumbnailUpload(id, thumbnail)
 
   await pipeline(file.file, createWriteStream(tempPath))
   await rename(tempPath, finalPath)
+
+  if (storedThumbnail) {
+    const thumbnailPath = path.join(storagePaths.thumbnailsDir, storedThumbnail.fileName)
+    await writeFile(thumbnailPath, storedThumbnail.data)
+  }
 
   const fileStats = await stat(finalPath)
   const now = new Date().toISOString()
@@ -89,6 +105,8 @@ export async function saveRecording({
     updatedAt: now,
     fileName,
     mimeType: file.mimetype || 'video/webm',
+    thumbnailFileName: storedThumbnail?.fileName ?? null,
+    thumbnailMimeType: storedThumbnail?.mimetype ?? null,
     sizeBytes: fileStats.size,
     durationMs,
     shareToken: null,
@@ -140,6 +158,17 @@ export async function deleteRecording(id: string) {
   try {
     const video = await getVideoFile(recording)
     await unlink(video.path)
+  } catch (error) {
+    if (!isMissingFileError(error)) {
+      throw error
+    }
+  }
+
+  try {
+    const thumbnail = await getThumbnailFile(recording)
+    if (thumbnail) {
+      await unlink(thumbnail.path)
+    }
   } catch (error) {
     if (!isMissingFileError(error)) {
       throw error
@@ -223,6 +252,30 @@ export async function getVideoFile(recording: Recording) {
   }
 }
 
+export async function getThumbnailFile(recording: Recording) {
+  if (!recording.thumbnailFileName || !recording.thumbnailMimeType) {
+    return null
+  }
+
+  const filePath = path.join(storagePaths.thumbnailsDir, recording.thumbnailFileName)
+  const resolved = path.resolve(filePath)
+  const thumbnailsRoot = path.resolve(storagePaths.thumbnailsDir)
+  const normalizedResolved = resolved.toLowerCase()
+  const normalizedRoot = thumbnailsRoot.toLowerCase()
+
+  if (!normalizedResolved.startsWith(`${normalizedRoot}${path.sep}`)) {
+    throw new Error('Recording thumbnail resolved outside the thumbnails root')
+  }
+
+  const fileStats = await stat(resolved)
+  return {
+    path: resolved,
+    size: fileStats.size,
+    mimeType: recording.thumbnailMimeType,
+    stream: () => createReadStream(resolved),
+  }
+}
+
 function publicRecording(recording: Recording) {
   return {
     id: recording.id,
@@ -230,6 +283,8 @@ function publicRecording(recording: Recording) {
     createdAt: recording.createdAt,
     updatedAt: recording.updatedAt,
     mimeType: recording.mimeType,
+    thumbnailUrl: recording.thumbnailFileName ? `/api/recordings/${recording.id}/thumbnail` : null,
+    thumbnailMimeType: recording.thumbnailMimeType,
     sizeBytes: recording.sizeBytes,
     durationMs: recording.durationMs,
     shareToken: recording.shareToken,
@@ -273,6 +328,41 @@ function normalizeTitle(title: string) {
   return normalized.slice(0, 48) || 'recording'
 }
 
+function normalizeThumbnailUpload(id: string, thumbnail: ThumbnailUpload | null | undefined) {
+  if (!thumbnail?.data.length) {
+    return null
+  }
+
+  const extension = getThumbnailExtension(thumbnail.mimetype)
+  if (!extension) {
+    return null
+  }
+
+  return {
+    data: thumbnail.data,
+    fileName: `${id}-poster.${extension}`,
+    mimetype: thumbnail.mimetype,
+  }
+}
+
+function getThumbnailExtension(mimetype: string) {
+  const normalized = mimetype.toLowerCase()
+
+  if (normalized === 'image/webp') {
+    return 'webp'
+  }
+
+  if (normalized === 'image/png') {
+    return 'png'
+  }
+
+  if (normalized === 'image/jpeg') {
+    return 'jpg'
+  }
+
+  return null
+}
+
 async function applyShareSettings(recording: Recording, settings: ShareSettingsInput) {
   if ('expiresAt' in settings) {
     recording.shareExpiresAt = settings.expiresAt ?? null
@@ -299,6 +389,8 @@ async function applyShareSettings(recording: Recording, settings: ShareSettingsI
 function normalizeRecording(recording: Recording) {
   return {
     ...recording,
+    thumbnailFileName: recording.thumbnailFileName ?? null,
+    thumbnailMimeType: recording.thumbnailMimeType ?? null,
     shareExpiresAt: recording.shareExpiresAt ?? null,
     shareWasRevoked: Boolean(recording.shareWasRevoked),
     shareDownloadEnabled:

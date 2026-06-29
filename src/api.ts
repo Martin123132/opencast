@@ -36,16 +36,21 @@ export async function fetchSharedRecording(token: string, accessToken?: string) 
 
 export async function uploadRecording({
   blob,
+  thumbnail,
   title,
   durationMs,
 }: {
   blob: Blob
+  thumbnail?: Blob | null
   title: string
   durationMs: number | null
 }) {
   const form = new FormData()
   form.append('title', title)
   form.append('durationMs', String(durationMs ?? ''))
+  if (thumbnail) {
+    form.append('thumbnail', thumbnail, `${normalizeFileName(title)}-poster.${thumbnailExtension(thumbnail.type)}`)
+  }
   form.append('video', blob, `${normalizeFileName(title)}.webm`)
 
   const response = await fetch('/api/recordings', {
@@ -126,4 +131,16 @@ function normalizeFileName(title: string) {
       .replace(/^-+|-+$/g, '')
       .slice(0, 48) || 'recording'
   )
+}
+
+function thumbnailExtension(mimeType: string) {
+  if (mimeType === 'image/png') {
+    return 'png'
+  }
+
+  if (mimeType === 'image/jpeg') {
+    return 'jpg'
+  }
+
+  return 'webp'
 }

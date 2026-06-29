@@ -31,6 +31,7 @@ export function useScreenRecorder() {
   const [elapsedMs, setElapsedMs] = useState(0)
   const [durationMs, setDurationMs] = useState<number | null>(null)
   const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null)
+  const [thumbnailBlob, setThumbnailBlob] = useState<Blob | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -166,6 +167,7 @@ export function useScreenRecorder() {
     finalDurationRef.current = 0
     discardRecordingRef.current = false
     setRecordingBlob(null)
+    setThumbnailBlob(null)
     setDurationMs(null)
     setElapsedMs(0)
     setStatus('idle')
@@ -182,6 +184,7 @@ export function useScreenRecorder() {
       setStatus('requesting')
       setError(null)
       setRecordingBlob(null)
+      setThumbnailBlob(null)
       setDurationMs(null)
       setElapsedMs(0)
       setCountdown(null)
@@ -272,6 +275,7 @@ export function useScreenRecorder() {
         const nextDurationMs = finalDurationRef.current || getCurrentElapsed()
         const shouldDiscard = discardRecordingRef.current
         const blob = new Blob(chunksRef.current, { type: mimeType || 'video/webm' })
+        const thumbnailPromise = shouldDiscard ? Promise.resolve(null) : captureThumbnailBlob(canvas)
         cleanupCapture()
         mediaRecorderRef.current = null
         chunksRef.current = []
@@ -283,17 +287,21 @@ export function useScreenRecorder() {
         if (shouldDiscard) {
           setDurationMs(null)
           setRecordingBlob(null)
+          setThumbnailBlob(null)
           replacePreviewUrl(null)
           setElapsedMs(0)
           setStatus('idle')
           return
         }
 
-        setDurationMs(nextDurationMs)
-        setRecordingBlob(blob)
-        replacePreviewUrl(blob)
-        setElapsedMs(nextDurationMs)
-        setStatus('ready')
+        void thumbnailPromise.then((nextThumbnailBlob) => {
+          setDurationMs(nextDurationMs)
+          setRecordingBlob(blob)
+          setThumbnailBlob(nextThumbnailBlob)
+          replacePreviewUrl(blob)
+          setElapsedMs(nextDurationMs)
+          setStatus('ready')
+        })
       })
 
       let remaining = 3
@@ -344,6 +352,7 @@ export function useScreenRecorder() {
     elapsedBeforePauseRef.current = 0
     finalDurationRef.current = 0
     setRecordingBlob(null)
+    setThumbnailBlob(null)
     setDurationMs(null)
     setElapsedMs(0)
     setCountdown(null)
@@ -369,6 +378,7 @@ export function useScreenRecorder() {
     elapsedMs,
     durationMs,
     recordingBlob,
+    thumbnailBlob,
     previewUrl,
     error,
     startRecording,
@@ -476,6 +486,27 @@ async function makeVideoElement(stream: MediaStream) {
   video.playsInline = true
   await video.play()
   return video
+}
+
+function captureThumbnailBlob(canvas: HTMLCanvasElement) {
+  return new Promise<Blob | null>((resolve) => {
+    try {
+      canvas.toBlob(
+        (webpBlob) => {
+          if (webpBlob) {
+            resolve(webpBlob)
+            return
+          }
+
+          canvas.toBlob((pngBlob) => resolve(pngBlob), 'image/png')
+        },
+        'image/webp',
+        0.78,
+      )
+    } catch {
+      resolve(null)
+    }
+  })
 }
 
 function pickMimeType() {
