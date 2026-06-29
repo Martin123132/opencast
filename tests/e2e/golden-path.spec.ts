@@ -120,6 +120,10 @@ test('loads config and advances from setup into the recorder path', async ({ pag
   await storageHealth.getByRole('button', { name: 'Back up library' }).click()
   await expect(storageHealth.getByText('Backup ready: 0 recordings copied to')).toBeVisible()
   await expect(storageHealth.getByLabel('Backup history').getByText('Complete: 0 recordings')).toBeVisible()
+  await storageHealth.getByRole('button', { name: 'Preview backup' }).click()
+  const backupPreview = storageHealth.getByLabel('Backup preview')
+  await expect(backupPreview.getByText('Complete backup with 0 recordings.')).toBeVisible()
+  await expect(backupPreview.getByText('must not reactivate old public share links')).toBeVisible()
 
   await page.getByRole('button', { name: 'Start' }).click()
 

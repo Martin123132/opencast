@@ -3,7 +3,11 @@ import { readFile, rm, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import { test } from 'node:test'
-import { createLibraryBackup, listLibraryBackups } from '../server/libraryBackup.ts'
+import {
+  createLibraryBackup,
+  getLibraryBackupPreview,
+  listLibraryBackups,
+} from '../server/libraryBackup.ts'
 import { appConfig, storagePaths } from '../server/config.ts'
 import { ensureStorage, saveRecording } from '../server/store.ts'
 
@@ -31,6 +35,7 @@ test('creates a complete D-drive backup with index, recording, thumbnail, and ma
 
     const backup = await createLibraryBackup()
     const listedBackups = await listLibraryBackups()
+    const preview = await getLibraryBackupPreview(backup.id)
 
     assert.equal(backup.status, 'complete')
     assert.equal(backup.recordingCount, 1)
@@ -42,6 +47,18 @@ test('creates a complete D-drive backup with index, recording, thumbnail, and ma
     assert.equal(listedBackups.length, 1)
     assert.equal(listedBackups[0]?.id, backup.id)
     assert.equal(listedBackups[0]?.status, 'complete')
+    assert.equal(preview?.restoreMode, 'preview-only')
+    assert.match(preview?.privacyNote ?? '', /must not reactivate old public share links/)
+    assert.deepEqual(preview?.recordings, [
+      {
+        id: recording.id,
+        title: 'Backup fixture',
+        fileName: recording.fileName,
+        thumbnailFileName: recording.thumbnailFileName,
+        videoPresent: true,
+        thumbnailPresent: true,
+      },
+    ])
 
     await stat(path.join(backup.path, 'recordings', recording.fileName))
     await stat(path.join(backup.path, 'thumbnails', recording.thumbnailFileName!))

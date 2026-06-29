@@ -70,6 +70,19 @@ export type LibraryBackup = {
   status: 'complete' | 'partial' | 'unreadable'
 }
 
+export type LibraryBackupPreview = LibraryBackup & {
+  restoreMode: 'preview-only'
+  privacyNote: string
+  recordings: Array<{
+    id: string
+    title: string
+    fileName: string
+    thumbnailFileName: string | null
+    videoPresent: boolean
+    thumbnailPresent: boolean | null
+  }>
+}
+
 export type ShareSettingsInput = {
   expiresAt?: string | null
   downloadEnabled?: boolean

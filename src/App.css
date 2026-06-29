@@ -295,6 +295,47 @@
   overflow-wrap: anywhere;
 }
 
+.backup-preview {
+  display: grid;
+  gap: 6px;
+}
+
+.backup-preview strong {
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.backup-preview p,
+.backup-preview small {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.backup-preview ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.backup-preview li {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.backup-preview span {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 720;
+  line-height: 1.2;
+}
+
 .storage-health-detail {
   overflow-wrap: anywhere;
 }

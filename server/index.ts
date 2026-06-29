@@ -30,7 +30,11 @@ import {
   verifySharePassword,
 } from './shareAccess.js'
 import { getStorageHealth } from './storageHealth.js'
-import { createLibraryBackup, listLibraryBackups } from './libraryBackup.js'
+import {
+  createLibraryBackup,
+  getLibraryBackupPreview,
+  listLibraryBackups,
+} from './libraryBackup.js'
 
 const app = Fastify({
   logger: true,
@@ -87,6 +91,17 @@ app.post('/api/backups', async (_, reply) => {
 app.get('/api/backups', async () => ({
   backups: await listLibraryBackups(),
 }))
+
+app.get('/api/backups/:id', async (request, reply) => {
+  const { id } = request.params as { id: string }
+  const backup = await getLibraryBackupPreview(id)
+
+  if (!backup) {
+    return reply.code(404).send({ error: 'Backup not found' })
+  }
+
+  return { backup }
+})
 
 app.get('/api/recordings', async () => {
   const recordings = await listRecordings()

@@ -41,6 +41,7 @@ import {
   createShare,
   deleteRecording,
   fetchAppConfig,
+  fetchLibraryBackupPreview,
   fetchLibraryBackups,
   fetchRecordings,
   fetchSharedRecording,
@@ -52,6 +53,7 @@ import {
 import type {
   AppConfig,
   LibraryBackup,
+  LibraryBackupPreview,
   Recording,
   RecordingDurationSource,
   ShareSettingsInput,
@@ -142,6 +144,8 @@ function StudioApp() {
   const [isBackingUp, setIsBackingUp] = useState(false)
   const [backupStatus, setBackupStatus] = useState<string | null>(null)
   const [backups, setBackups] = useState<LibraryBackup[]>([])
+  const [backupPreview, setBackupPreview] = useState<LibraryBackupPreview | null>(null)
+  const [isPreviewingBackup, setIsPreviewingBackup] = useState(false)
   const [setupComplete, setSetupComplete] = useState(() => {
     try {
       return window.localStorage.getItem(setupStorageKey) === 'complete'
@@ -327,12 +331,28 @@ function StudioApp() {
       const nextBackups = await fetchLibraryBackups()
       setAppConfig(nextConfig)
       setBackups(nextBackups)
+      setBackupPreview(null)
       setConfigError(null)
       setBackupStatus(formatBackupStatus(backup))
     } catch (caughtError) {
       setBackupStatus(caughtError instanceof Error ? caughtError.message : 'Backup could not be created.')
     } finally {
       setIsBackingUp(false)
+    }
+  }, [])
+
+  const handlePreviewBackup = useCallback(async (backup: LibraryBackup) => {
+    setIsPreviewingBackup(true)
+    setBackupStatus(null)
+
+    try {
+      const preview = await fetchLibraryBackupPreview(backup.id)
+      setBackupPreview(preview)
+    } catch (caughtError) {
+      setBackupPreview(null)
+      setBackupStatus(caughtError instanceof Error ? caughtError.message : 'Backup preview could not be loaded.')
+    } finally {
+      setIsPreviewingBackup(false)
     }
   }, [])
 
@@ -848,6 +868,9 @@ function StudioApp() {
           isBackingUp={isBackingUp}
           backupStatus={backupStatus}
           backups={backups}
+          backupPreview={backupPreview}
+          onPreviewBackup={handlePreviewBackup}
+          isPreviewingBackup={isPreviewingBackup}
         />
 
         <section className="recorder-panel" aria-label="Recorder">
@@ -1608,6 +1631,9 @@ function MissionRail({
   isBackingUp,
   backupStatus,
   backups,
+  backupPreview,
+  onPreviewBackup,
+  isPreviewingBackup,
 }: {
   activeStep: StudioStep
   pathComplete: {
@@ -1625,6 +1651,9 @@ function MissionRail({
   isBackingUp: boolean
   backupStatus: string | null
   backups: LibraryBackup[]
+  backupPreview: LibraryBackupPreview | null
+  onPreviewBackup: (backup: LibraryBackup) => void
+  isPreviewingBackup: boolean
 }) {
   const isReviewDraft = activeStep === 'review'
   const stepGuidance = getStepGuidance(activeStep, isReviewDraft)
@@ -1703,6 +1732,9 @@ function MissionRail({
         isBackingUp={isBackingUp}
         backupStatus={backupStatus}
         backups={backups}
+        backupPreview={backupPreview}
+        onPreviewBackup={onPreviewBackup}
+        isPreviewingBackup={isPreviewingBackup}
       />
     </aside>
   )
@@ -1714,12 +1746,18 @@ function StorageHealthCard({
   isBackingUp,
   backupStatus,
   backups,
+  backupPreview,
+  onPreviewBackup,
+  isPreviewingBackup,
 }: {
   storageHealth: AppConfig['storageHealth'] | null
   onCreateBackup: () => void
   isBackingUp: boolean
   backupStatus: string | null
   backups: LibraryBackup[]
+  backupPreview: LibraryBackupPreview | null
+  onPreviewBackup: (backup: LibraryBackup) => void
+  isPreviewingBackup: boolean
 }) {
   const diskTone = getStorageDiskTone(storageHealth?.disk.status ?? 'unknown')
   const libraryTone = getStorageLibraryTone(storageHealth?.library.status ?? 'unreadable')
@@ -1761,12 +1799,48 @@ function StorageHealthCard({
           <Save size={15} />
           {isBackingUp ? 'Backing up' : 'Back up library'}
         </button>
+        <button
+          className="secondary-button compact"
+          type="button"
+          onClick={() => {
+            if (latestBackup) {
+              onPreviewBackup(latestBackup)
+            }
+          }}
+          disabled={isPreviewingBackup || !latestBackup}
+        >
+          <Eye size={15} />
+          {isPreviewingBackup ? 'Previewing' : 'Preview backup'}
+        </button>
       </div>
       {backupStatus ? <p className="storage-health-detail">{backupStatus}</p> : null}
       <div className="storage-health-backup" aria-label="Backup history">
         <strong>Latest backup</strong>
         <p>{latestBackup ? formatBackupHistoryLine(latestBackup) : 'No backups yet'}</p>
       </div>
+      {backupPreview ? <BackupPreview backup={backupPreview} /> : null}
+    </section>
+  )
+}
+
+function BackupPreview({ backup }: { backup: LibraryBackupPreview }) {
+  const visibleRecordings = backup.recordings.slice(0, 3)
+
+  return (
+    <section className="backup-preview" aria-label="Backup preview">
+      <strong>Backup preview</strong>
+      <p>{formatBackupPreviewSummary(backup)}</p>
+      {visibleRecordings.length ? (
+        <ul>
+          {visibleRecordings.map((recording) => (
+            <li key={`${recording.id}-${recording.fileName}`}>
+              <span>{recording.title}</span>
+              <small>{recording.videoPresent ? 'Video ready' : 'Video missing'}</small>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <p>{backup.privacyNote}</p>
     </section>
   )
 }
@@ -3051,6 +3125,20 @@ function formatBackupHistoryLine(backup: LibraryBackup) {
         : 'Needs attention'
 
   return `${statusLabel}: ${countLabel} at ${formatDate(backup.createdAt)}. ${backup.path}`
+}
+
+function formatBackupPreviewSummary(backup: LibraryBackupPreview) {
+  const countLabel = backup.recordingCount === 1 ? '1 recording' : `${backup.recordingCount} recordings`
+
+  if (backup.status === 'complete') {
+    return `Complete backup with ${countLabel}. Restore is preview-only for now.`
+  }
+
+  if (backup.status === 'partial') {
+    return `Partial backup with ${backup.copiedRecordingFiles}/${backup.recordingCount} videos present.`
+  }
+
+  return 'Backup manifest needs attention before restore.'
 }
 
 function getDiskHealthLabel(disk: AppConfig['storageHealth']['disk']) {

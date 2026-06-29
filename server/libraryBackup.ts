@@ -25,6 +25,19 @@ export type LibraryBackup = {
 
 export type LibraryBackupStatus = 'complete' | 'partial' | 'unreadable'
 
+export type LibraryBackupPreview = LibraryBackup & {
+  restoreMode: 'preview-only'
+  privacyNote: string
+  recordings: Array<{
+    id: string
+    title: string
+    fileName: string
+    thumbnailFileName: string | null
+    videoPresent: boolean
+    thumbnailPresent: boolean | null
+  }>
+}
+
 type BackupManifest = LibraryBackup & {
   schemaVersion: 1
   dataRoot: string
@@ -102,6 +115,28 @@ export async function listLibraryBackups(): Promise<LibraryBackup[]> {
   return backups.toSorted((left, right) => right.createdAt.localeCompare(left.createdAt))
 }
 
+export async function getLibraryBackupPreview(id: string): Promise<LibraryBackupPreview | null> {
+  await ensureStorage()
+
+  const backupRoot = assertInsideDataRoot(path.join(storagePaths.backupsDir, id))
+
+  try {
+    const backupStats = await stat(backupRoot)
+
+    if (!backupStats.isDirectory()) {
+      return null
+    }
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return null
+    }
+
+    throw error
+  }
+
+  return readLibraryBackupPreview(backupRoot, id)
+}
+
 async function readBackupDirectory() {
   try {
     return await readdir(storagePaths.backupsDir, { withFileTypes: true })
@@ -111,6 +146,68 @@ async function readBackupDirectory() {
     }
 
     throw error
+  }
+}
+
+async function readLibraryBackupPreview(
+  backupRoot: string,
+  fallbackId: string,
+): Promise<LibraryBackupPreview> {
+  const safeBackupRoot = assertInsideDataRoot(backupRoot)
+  const manifestPath = path.join(safeBackupRoot, 'manifest.json')
+
+  try {
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as Partial<BackupManifest>
+    const id = manifest.id ?? fallbackId
+    const createdAt = manifest.createdAt ?? createdAtFromBackupId(fallbackId)
+    const recordings = Array.isArray(manifest.recordings) ? manifest.recordings : []
+    const previewRecordings = await Promise.all(
+      recordings.map((recording) => readBackupRecordingPreview(safeBackupRoot, recording)),
+    )
+    const verified = getPreviewFileCounts(previewRecordings)
+    const manifestStatus = manifest.status === 'partial' ? 'partial' : 'complete'
+    const status =
+      manifestStatus === 'partial' ||
+      verified.missingRecordingFiles ||
+      verified.missingThumbnailFiles
+        ? 'partial'
+        : 'complete'
+
+    return {
+      id,
+      createdAt,
+      path: safeBackupRoot,
+      indexPath: path.join(safeBackupRoot, 'index.json'),
+      manifestPath,
+      recordingCount: Number(manifest.recordingCount ?? previewRecordings.length),
+      copiedRecordingFiles: verified.copiedRecordingFiles,
+      copiedThumbnailFiles: verified.copiedThumbnailFiles,
+      missingRecordingFiles: verified.missingRecordingFiles,
+      missingThumbnailFiles: verified.missingThumbnailFiles,
+      status,
+      restoreMode: 'preview-only',
+      privacyNote:
+        'Preview only. Restoring should import recordings as private copies and must not reactivate old public share links.',
+      recordings: previewRecordings,
+    }
+  } catch {
+    return {
+      id: fallbackId,
+      createdAt: createdAtFromBackupId(fallbackId),
+      path: safeBackupRoot,
+      indexPath: path.join(safeBackupRoot, 'index.json'),
+      manifestPath,
+      recordingCount: 0,
+      copiedRecordingFiles: 0,
+      copiedThumbnailFiles: 0,
+      missingRecordingFiles: 0,
+      missingThumbnailFiles: 0,
+      status: 'unreadable',
+      restoreMode: 'preview-only',
+      privacyNote:
+        'Preview only. This backup manifest could not be read, so no restore should be attempted from it.',
+      recordings: [],
+    }
   }
 }
 
@@ -159,6 +256,76 @@ async function readLibraryBackup(backupRoot: string, fallbackId: string): Promis
       missingThumbnailFiles: 0,
       status: 'unreadable',
     }
+  }
+}
+
+async function readBackupRecordingPreview(
+  backupRoot: string,
+  recording: {
+    id?: string
+    title?: string
+    fileName?: string
+    thumbnailFileName?: string | null
+  },
+) {
+  const videoPresent = recording.fileName
+    ? await pathExists(path.join(backupRoot, 'recordings', path.basename(recording.fileName)))
+    : false
+  const thumbnailPresent = recording.thumbnailFileName
+    ? await pathExists(path.join(backupRoot, 'thumbnails', path.basename(recording.thumbnailFileName)))
+    : null
+
+  return {
+    id: recording.id ?? '',
+    title: recording.title ?? 'Untitled recording',
+    fileName: recording.fileName ? path.basename(recording.fileName) : '',
+    thumbnailFileName: recording.thumbnailFileName ? path.basename(recording.thumbnailFileName) : null,
+    videoPresent,
+    thumbnailPresent,
+  }
+}
+
+function getPreviewFileCounts(
+  recordings: Array<{
+    videoPresent: boolean
+    thumbnailPresent: boolean | null
+  }>,
+) {
+  return recordings.reduce(
+    (totals, recording) => {
+      if (recording.videoPresent) {
+        totals.copiedRecordingFiles += 1
+      } else {
+        totals.missingRecordingFiles += 1
+      }
+
+      if (recording.thumbnailPresent === true) {
+        totals.copiedThumbnailFiles += 1
+      } else if (recording.thumbnailPresent === false) {
+        totals.missingThumbnailFiles += 1
+      }
+
+      return totals
+    },
+    {
+      copiedRecordingFiles: 0,
+      copiedThumbnailFiles: 0,
+      missingRecordingFiles: 0,
+      missingThumbnailFiles: 0,
+    },
+  )
+}
+
+async function pathExists(targetPath: string) {
+  try {
+    await stat(targetPath)
+    return true
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return false
+    }
+
+    throw error
   }
 }
 
