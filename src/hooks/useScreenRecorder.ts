@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { RecorderStatus } from '../types'
+import type { RecorderStatus, RecordingDurationSource } from '../types'
 
 type AudioWindow = Window & {
   webkitAudioContext?: typeof AudioContext
@@ -19,6 +19,7 @@ export function useScreenRecorder() {
   const countdownTimerRef = useRef<number | null>(null)
   const chunksRef = useRef<BlobPart[]>([])
   const previewUrlRef = useRef<string | null>(null)
+  const durationProbeIdRef = useRef(0)
   const activeStartedAtRef = useRef(0)
   const elapsedBeforePauseRef = useRef(0)
   const finalDurationRef = useRef(0)
@@ -30,6 +31,7 @@ export function useScreenRecorder() {
   const [countdown, setCountdown] = useState<number | null>(null)
   const [elapsedMs, setElapsedMs] = useState(0)
   const [durationMs, setDurationMs] = useState<number | null>(null)
+  const [durationSource, setDurationSource] = useState<RecordingDurationSource>('unknown')
   const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null)
   const [thumbnailBlob, setThumbnailBlob] = useState<Blob | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -162,6 +164,7 @@ export function useScreenRecorder() {
     cleanupCapture()
     chunksRef.current = []
     mediaRecorderRef.current = null
+    durationProbeIdRef.current += 1
     activeStartedAtRef.current = 0
     elapsedBeforePauseRef.current = 0
     finalDurationRef.current = 0
@@ -169,6 +172,7 @@ export function useScreenRecorder() {
     setRecordingBlob(null)
     setThumbnailBlob(null)
     setDurationMs(null)
+    setDurationSource('unknown')
     setElapsedMs(0)
     setStatus('idle')
   }, [cleanupCapture, clearCountdownTimer, getCurrentElapsed])
@@ -186,6 +190,7 @@ export function useScreenRecorder() {
       setRecordingBlob(null)
       setThumbnailBlob(null)
       setDurationMs(null)
+      setDurationSource('unknown')
       setElapsedMs(0)
       setCountdown(null)
       setScreenReady(false)
@@ -276,6 +281,8 @@ export function useScreenRecorder() {
         const shouldDiscard = discardRecordingRef.current
         const blob = new Blob(chunksRef.current, { type: mimeType || 'video/webm' })
         const thumbnailPromise = shouldDiscard ? Promise.resolve(null) : captureThumbnailBlob(canvas)
+        const durationProbeId = durationProbeIdRef.current + 1
+        durationProbeIdRef.current = durationProbeId
         cleanupCapture()
         mediaRecorderRef.current = null
         chunksRef.current = []
@@ -286,6 +293,7 @@ export function useScreenRecorder() {
 
         if (shouldDiscard) {
           setDurationMs(null)
+          setDurationSource('unknown')
           setRecordingBlob(null)
           setThumbnailBlob(null)
           replacePreviewUrl(null)
@@ -294,13 +302,25 @@ export function useScreenRecorder() {
           return
         }
 
+        setDurationMs(nextDurationMs)
+        setDurationSource(nextDurationMs > 0 ? 'timer' : 'unknown')
+        setElapsedMs(nextDurationMs)
+
         void thumbnailPromise.then((nextThumbnailBlob) => {
-          setDurationMs(nextDurationMs)
           setRecordingBlob(blob)
           setThumbnailBlob(nextThumbnailBlob)
           replacePreviewUrl(blob)
-          setElapsedMs(nextDurationMs)
           setStatus('ready')
+        })
+
+        void readBlobMediaDuration(blob).then((mediaDurationMs) => {
+          if (durationProbeIdRef.current !== durationProbeId || mediaDurationMs === null) {
+            return
+          }
+
+          setDurationMs(mediaDurationMs)
+          setElapsedMs(mediaDurationMs)
+          setDurationSource('media')
         })
       })
 
@@ -348,12 +368,14 @@ export function useScreenRecorder() {
 
   const resetRecording = useCallback(() => {
     discardRecordingRef.current = false
+    durationProbeIdRef.current += 1
     activeStartedAtRef.current = 0
     elapsedBeforePauseRef.current = 0
     finalDurationRef.current = 0
     setRecordingBlob(null)
     setThumbnailBlob(null)
     setDurationMs(null)
+    setDurationSource('unknown')
     setElapsedMs(0)
     setCountdown(null)
     replacePreviewUrl(null)
@@ -377,6 +399,7 @@ export function useScreenRecorder() {
     countdown,
     elapsedMs,
     durationMs,
+    durationSource,
     recordingBlob,
     thumbnailBlob,
     previewUrl,
@@ -506,6 +529,41 @@ function captureThumbnailBlob(canvas: HTMLCanvasElement) {
     } catch {
       resolve(null)
     }
+  })
+}
+
+function readBlobMediaDuration(blob: Blob) {
+  return new Promise<number | null>((resolve) => {
+    const video = document.createElement('video')
+    const url = URL.createObjectURL(blob)
+    let settled = false
+    let timeoutId = 0
+
+    const finish = (value: number | null) => {
+      if (settled) {
+        return
+      }
+
+      settled = true
+      window.clearTimeout(timeoutId)
+      video.removeAttribute('src')
+      video.load()
+      URL.revokeObjectURL(url)
+      resolve(value)
+    }
+
+    timeoutId = window.setTimeout(() => finish(null), 3000)
+    video.preload = 'metadata'
+    video.addEventListener(
+      'loadedmetadata',
+      () => {
+        const durationMs = Math.round(video.duration * 1000)
+        finish(Number.isFinite(durationMs) && durationMs > 0 ? durationMs : null)
+      },
+      { once: true },
+    )
+    video.addEventListener('error', () => finish(null), { once: true })
+    video.src = url
   })
 }
 

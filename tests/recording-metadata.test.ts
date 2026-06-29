@@ -69,10 +69,12 @@ test('stores optional recording poster metadata and removes the poster with the 
 
     assert.equal(recording.thumbnailFileName, `${recording.id}-poster.png`)
     assert.equal(recording.thumbnailMimeType, 'image/png')
+    assert.equal(recording.durationSource, 'timer')
 
     const publicRecording = toPublicRecording(recording)
     assert.equal(publicRecording.thumbnailUrl, `/api/recordings/${recording.id}/thumbnail`)
     assert.equal(publicRecording.thumbnailMimeType, 'image/png')
+    assert.equal(publicRecording.durationSource, 'timer')
 
     const thumbnail = await getThumbnailFile(recording)
     assert.equal(thumbnail?.mimeType, 'image/png')
@@ -82,6 +84,24 @@ test('stores optional recording poster metadata and removes the poster with the 
     await deleteRecording(recording.id)
 
     await assert.rejects(() => getThumbnailFile(recording), { code: 'ENOENT' })
+  })
+})
+
+test('stores media-derived duration source when the browser can read the recording metadata', async () => {
+  await withMetadataStore(async () => {
+    const recording = await saveRecording({
+      file: buildTestFile(),
+      title: 'Media duration fixture',
+      durationMs: 3125,
+      durationSource: 'media',
+    })
+
+    assert.equal(recording.durationMs, 3125)
+    assert.equal(recording.durationSource, 'media')
+
+    const publicRecording = toPublicRecording(recording)
+    assert.equal(publicRecording.durationMs, 3125)
+    assert.equal(publicRecording.durationSource, 'media')
   })
 })
 

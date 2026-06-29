@@ -431,6 +431,8 @@ test('shows library recordings, validates rename, and opens the share modal', as
   await expect(selected.getByRole('button', { name: 'Rename' })).toBeDisabled()
   await expect(selected.getByLabel('Recording details').getByText('Created')).toBeVisible()
   await expect(selected.getByLabel('Recording details').getByText('Size')).toBeVisible()
+  await expect(selected.getByLabel('Recording details').getByText('Duration source')).toBeVisible()
+  await expect(selected.getByLabel('Recording details').getByText('Timer estimate')).toBeVisible()
   await expect(selected.getByLabel('Recording details').getByText('Poster')).toBeVisible()
   await expect(selected.getByLabel('Recording details').getByText('Captured')).toBeVisible()
   await expect(selected.getByLabel('Recording details').getByText('Views')).toBeVisible()

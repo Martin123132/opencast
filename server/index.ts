@@ -17,6 +17,7 @@ import {
   deleteRecording,
   revokeShare,
   updateRecording,
+  type RecordingDurationSource,
   type ShareSettingsInput,
   type ThumbnailUpload,
   type Recording,
@@ -85,6 +86,7 @@ app.post('/api/recordings', async (request, reply) => {
   const parts = request.parts()
   let title = ''
   let durationMs: number | null = null
+  let durationSource: RecordingDurationSource | undefined
   let thumbnail: ThumbnailUpload | null = null
 
   for await (const part of parts) {
@@ -98,7 +100,7 @@ app.post('/api/recordings', async (request, reply) => {
         continue
       }
 
-      const recording = await saveRecording({ file: part, title, durationMs, thumbnail })
+      const recording = await saveRecording({ file: part, title, durationMs, durationSource, thumbnail })
       return reply.code(201).send({ recording: toPublicRecording(recording) })
     }
 
@@ -109,6 +111,10 @@ app.post('/api/recordings', async (request, reply) => {
     if (part.fieldname === 'durationMs') {
       const parsed = Number(part.value)
       durationMs = Number.isFinite(parsed) ? parsed : null
+    }
+
+    if (part.fieldname === 'durationSource') {
+      durationSource = parseDurationSource(part.value)
     }
   }
 
@@ -435,6 +441,10 @@ function normalizeExpiry(value: string | null | undefined) {
   }
 
   return new Date(timestamp).toISOString()
+}
+
+function parseDurationSource(value: unknown): RecordingDurationSource | undefined {
+  return value === 'media' || value === 'timer' || value === 'unknown' ? value : undefined
 }
 
 function getAccessToken(query: unknown) {

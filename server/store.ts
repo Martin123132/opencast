@@ -18,6 +18,7 @@ export type Recording = {
   thumbnailMimeType: string | null
   sizeBytes: number
   durationMs: number | null
+  durationSource: RecordingDurationSource
   shareToken: string | null
   shareExpiresAt: string | null
   shareWasRevoked: boolean
@@ -26,6 +27,8 @@ export type Recording = {
   sharePasswordSalt: string | null
   viewCount: number
 }
+
+export type RecordingDurationSource = 'media' | 'timer' | 'unknown'
 
 export type ShareSettingsInput = {
   expiresAt?: string | null
@@ -80,11 +83,13 @@ export async function saveRecording({
   file,
   title,
   durationMs,
+  durationSource,
   thumbnail,
 }: {
   file: MultipartFile
   title: string
   durationMs: number | null
+  durationSource?: RecordingDurationSource
   thumbnail?: ThumbnailUpload | null
 }) {
   await ensureStorage()
@@ -117,6 +122,7 @@ export async function saveRecording({
     thumbnailMimeType: storedThumbnail?.mimetype ?? null,
     sizeBytes: fileStats.size,
     durationMs,
+    durationSource: normalizeDurationSource(durationSource, durationMs),
     shareToken: null,
     shareExpiresAt: null,
     shareWasRevoked: false,
@@ -295,6 +301,7 @@ function publicRecording(recording: Recording) {
     thumbnailMimeType: recording.thumbnailMimeType,
     sizeBytes: recording.sizeBytes,
     durationMs: recording.durationMs,
+    durationSource: recording.durationSource,
     shareToken: recording.shareToken,
     shareExpiresAt: recording.shareExpiresAt,
     shareWasRevoked: recording.shareWasRevoked,
@@ -420,6 +427,7 @@ function normalizeRecording(recording: Recording) {
     ...recording,
     thumbnailFileName: recording.thumbnailFileName ?? null,
     thumbnailMimeType: recording.thumbnailMimeType ?? null,
+    durationSource: normalizeDurationSource(recording.durationSource, recording.durationMs),
     shareExpiresAt: recording.shareExpiresAt ?? null,
     shareWasRevoked: Boolean(recording.shareWasRevoked),
     shareDownloadEnabled:
@@ -428,6 +436,14 @@ function normalizeRecording(recording: Recording) {
     sharePasswordSalt: recording.sharePasswordSalt ?? null,
     viewCount: recording.viewCount ?? 0,
   }
+}
+
+function normalizeDurationSource(value: unknown, durationMs: number | null): RecordingDurationSource {
+  if (value === 'media' || value === 'timer' || value === 'unknown') {
+    return value
+  }
+
+  return durationMs === null ? 'unknown' : 'timer'
 }
 
 export function isShareExpired(recording: Recording) {

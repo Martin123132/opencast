@@ -1,6 +1,7 @@
 import type {
   AppConfig,
   Recording,
+  RecordingDurationSource,
   ShareAccessResponse,
   SharedRecordingResponse,
   ShareSettingsInput,
@@ -39,15 +40,18 @@ export async function uploadRecording({
   thumbnail,
   title,
   durationMs,
+  durationSource,
 }: {
   blob: Blob
   thumbnail?: Blob | null
   title: string
   durationMs: number | null
+  durationSource: RecordingDurationSource
 }) {
   const form = new FormData()
   form.append('title', title)
   form.append('durationMs', String(durationMs ?? ''))
+  form.append('durationSource', durationSource)
   if (thumbnail) {
     form.append('thumbnail', thumbnail, `${normalizeFileName(title)}-poster.${thumbnailExtension(thumbnail.type)}`)
   }

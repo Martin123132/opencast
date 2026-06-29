@@ -8,6 +8,7 @@ export type Recording = {
   thumbnailMimeType: string | null
   sizeBytes: number
   durationMs: number | null
+  durationSource: RecordingDurationSource
   shareToken: string | null
   shareExpiresAt: string | null
   shareWasRevoked: boolean
@@ -16,6 +17,8 @@ export type Recording = {
   shareExpired: boolean
   viewCount: number
 }
+
+export type RecordingDurationSource = 'media' | 'timer' | 'unknown'
 
 export type RecorderStatus =
   | 'idle'

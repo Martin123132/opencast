@@ -47,7 +47,7 @@ import {
   updateRecording,
   uploadRecording,
 } from './api'
-import type { AppConfig, Recording, ShareSettingsInput } from './types'
+import type { AppConfig, Recording, RecordingDurationSource, ShareSettingsInput } from './types'
 import type { RecorderStatus } from './types'
 import { useScreenRecorder } from './hooks/useScreenRecorder'
 
@@ -92,6 +92,7 @@ function StudioApp() {
     countdown,
     elapsedMs,
     durationMs,
+    durationSource,
     recordingBlob,
     thumbnailBlob,
     previewUrl,
@@ -487,6 +488,7 @@ function StudioApp() {
         thumbnail: thumbnailBlob,
         title,
         durationMs,
+        durationSource,
       })
       await loadLibrary()
       setSelectedId(saved.id)
@@ -499,7 +501,7 @@ function StudioApp() {
     } finally {
       setIsSaving(false)
     }
-  }, [applyShareDefaults, durationMs, loadLibrary, recordingBlob, resetRecording, thumbnailBlob, title])
+  }, [applyShareDefaults, durationMs, durationSource, loadLibrary, recordingBlob, resetRecording, thumbnailBlob, title])
 
   const handleRename = useCallback(async () => {
     const nextTitle = selectedTitle.trim()
@@ -1076,6 +1078,7 @@ function StudioApp() {
               <div className="draft-state" aria-label="Draft status">
                 <StatusChip icon={<Lock size={15} />} label="Unsaved local draft" tone="neutral" />
                 <StatusChip icon={<Clock size={15} />} label={`${formatTime(durationMs ?? 0)} captured`} tone="neutral" />
+                <StatusChip icon={<Video size={15} />} label={formatDurationSourceLabel(durationSource)} tone="neutral" />
                 <StatusChip icon={<Link2 size={15} />} label="Share after save" tone="neutral" />
               </div>
               <section className="review-momentum" aria-label="Review momentum">
@@ -1365,6 +1368,14 @@ function StudioApp() {
                 <div>
                   <dt>Size</dt>
                   <dd>{formatBytes(selectedRecording.sizeBytes)}</dd>
+                </div>
+                <div>
+                  <dt>Duration</dt>
+                  <dd>{formatDurationLabel(selectedRecording.durationMs)}</dd>
+                </div>
+                <div>
+                  <dt>Duration source</dt>
+                  <dd>{formatDurationSourceLabel(selectedRecording.durationSource)}</dd>
                 </div>
                 <div>
                   <dt>Poster</dt>
@@ -2981,6 +2992,18 @@ function formatTime(value: number) {
 
 function formatDurationLabel(value: number | null) {
   return value === null ? 'Duration unknown' : `Duration ${formatTime(value)}`
+}
+
+function formatDurationSourceLabel(value: RecordingDurationSource) {
+  if (value === 'media') {
+    return 'Media duration'
+  }
+
+  if (value === 'timer') {
+    return 'Timer estimate'
+  }
+
+  return 'Duration source unknown'
 }
 
 function normalizeFileName(value: string) {
