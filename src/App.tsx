@@ -2035,8 +2035,6 @@ function ShareDialog({
   const hasRevokedLink = Boolean(recording.shareWasRevoked && !recording.shareToken)
   const canRecreateLink = recording.shareExpired || hasRevokedLink
   const linkActionLabel = canRecreateLink ? 'Recreate link' : hasAnyShareLink ? 'Update link' : 'Create link'
-  const canShareActions = hasActiveShare
-  const primaryShareActionLabel = hasActiveShare ? 'Copy guest link' : linkActionLabel
   const shareLinkLabel = recording.shareExpired
     ? 'Share link expired'
     : hasRevokedLink
@@ -2066,6 +2064,15 @@ function ShareDialog({
   })()
 
   const shouldShowShareLink = hasActiveShare
+  const hasAdvancedSettings = Boolean(
+    passwordEnabled ||
+      expiresAt ||
+      !downloadEnabled ||
+      recording.sharePasswordProtected ||
+      recording.shareExpiresAt ||
+      !recording.shareDownloadEnabled,
+  )
+  const [advancedOpen, setAdvancedOpen] = useState(hasAdvancedSettings)
   const pendingPasswordLabel = passwordEnabled
     ? recording.sharePasswordProtected && !password.trim()
       ? 'Password unchanged'
@@ -2082,6 +2089,7 @@ function ShareDialog({
           <div>
             <h2>Share</h2>
             <p>{recording.title}</p>
+            <p>No account needed. Create a local guest link, then copy it.</p>
           </div>
           <button
             aria-label="Close share dialog"
@@ -2103,7 +2111,7 @@ function ShareDialog({
           <StatusChip
             tone={recording.sharePasswordProtected ? 'good' : 'neutral'}
             icon={recording.sharePasswordProtected ? <ShieldCheck size={15} /> : <Lock size={15} />}
-            label={recording.sharePasswordProtected ? 'Password' : 'No password'}
+            label={recording.sharePasswordProtected ? 'Viewer password' : 'No account'}
           />
           <StatusChip
             tone={recording.shareExpired ? 'bad' : 'neutral'}
@@ -2112,80 +2120,28 @@ function ShareDialog({
           />
         </div>
 
-        <div className="share-controls" aria-label="Share settings">
-          <label className="check-row">
-            <input
-              checked={passwordEnabled}
-              type="checkbox"
-              onChange={(event) => onPasswordEnabledChange(event.target.checked)}
-            />
-            <Lock size={16} />
-            Require password
-          </label>
-          {passwordEnabled ? (
-            <input
-              aria-label="Share password"
-              className="share-input"
-              type="password"
-              value={password}
-              onChange={(event) => onPasswordChange(event.target.value)}
-              placeholder={recording.sharePasswordProtected ? 'Leave unchanged' : 'Set password'}
-            />
-          ) : null}
-
-          <div className="preset-row" aria-label="Expiry presets">
-            <button className="secondary-button compact" type="button" onClick={() => onExpiryPreset('day')}>
-              24h
+        {!hasActiveShare ? (
+          <section className="share-start-card" aria-label="Share next step">
+            <div className="share-ready-heading">
+              <span className="row-icon" aria-hidden="true">
+                <Link2 size={17} />
+              </span>
+              <div>
+                <strong>{canRecreateLink ? 'Create a fresh guest link' : 'Create a guest link'}</strong>
+                <p>
+                  ShareFrame makes a private local URL for this recording. There is no sign-up, cloud account, or
+                  password setup unless you open advanced settings.
+                </p>
+              </div>
+            </div>
+            <button className="primary-button" type="button" onClick={onSave}>
+              <Link2 size={16} />
+              {linkActionLabel}
             </button>
-            <button className="secondary-button compact" type="button" onClick={() => onExpiryPreset('week')}>
-              7d
-            </button>
-            <button className="secondary-button compact" type="button" onClick={() => onExpiryPreset('never')}>
-              Never
-            </button>
-          </div>
+          </section>
+        ) : null}
 
-          <label className="field-row">
-            <span>Expires</span>
-            <input
-              aria-label="Share expiry"
-              className="share-input"
-              type="datetime-local"
-              value={expiresAt}
-              onChange={(event) => onExpiresAtChange(event.target.value)}
-            />
-          </label>
-
-          <label className="check-row">
-            <input
-              checked={downloadEnabled}
-              type="checkbox"
-              onChange={(event) => onDownloadEnabledChange(event.target.checked)}
-            />
-            <Download size={16} />
-            Allow downloads
-          </label>
-        </div>
-
-        <div className="share-settings-preview" aria-label="Share settings summary">
-          <StatusChip
-            tone={passwordEnabled ? 'good' : 'neutral'}
-            icon={passwordEnabled ? <ShieldCheck size={15} /> : <Lock size={15} />}
-            label={pendingPasswordLabel}
-          />
-          <StatusChip
-            tone={expiresAt ? 'good' : 'neutral'}
-            icon={<Clock size={15} />}
-            label={pendingExpiryLabel}
-          />
-          <StatusChip
-            tone={downloadEnabled ? 'good' : 'neutral'}
-            icon={<Download size={15} />}
-            label={pendingDownloadLabel}
-          />
-        </div>
-
-        {canShareActions && shareUrl ? (
+        {hasActiveShare && shareUrl ? (
           <section className="share-ready-card" aria-label="Share ready">
             <div className="share-ready-heading">
               <span className="row-icon" aria-hidden="true">
@@ -2193,27 +2149,23 @@ function ShareDialog({
               </span>
               <div>
                 <strong>Ready to send</strong>
-                <p>Guest link is active. Copy it now, preview the guest view, or unshare when access should stop.</p>
+                <p>No account needed. Copy the guest link, or preview what the other person will see.</p>
               </div>
             </div>
-            <ol className="share-ready-steps">
-              <li className="complete">
-                <span aria-hidden="true"><Check size={14} /></span>
-                Link created
-              </li>
-              <li className="active">
-                <span aria-hidden="true"><Copy size={14} /></span>
-                Copy link
-              </li>
-              <li>
-                <span aria-hidden="true"><Eye size={14} /></span>
-                Review guest view
-              </li>
-            </ol>
+            <div className="share-primary-actions">
+              <button className="primary-button" type="button" onClick={onCopy}>
+                <Copy size={16} />
+                Copy guest link
+              </button>
+              <a className="secondary-link" href={shareUrl} target="_blank" rel="noreferrer">
+                <Eye size={16} />
+                View as guest
+              </a>
+            </div>
             <div className="share-preview-card" aria-label="Guest preview checklist">
               <div>
                 <strong>Preview before sending</strong>
-                <p>Open the guest view to confirm playback and access settings before the link leaves your machine.</p>
+                <p>Open the guest view if you want to check playback before sending the link.</p>
               </div>
               <a className="secondary-link compact" href={shareUrl} target="_blank" rel="noreferrer">
                 <Eye size={16} />
@@ -2238,6 +2190,102 @@ function ShareDialog({
           </div>
         ) : null}
 
+        <section className="share-advanced-section" aria-label="Advanced share settings">
+          <button
+            className="advanced-toggle"
+            type="button"
+            aria-expanded={advancedOpen}
+            aria-controls="share-advanced-settings"
+            onClick={() => setAdvancedOpen((value) => !value)}
+          >
+            <ShieldCheck size={16} />
+            <span>Advanced link settings</span>
+            <small>Optional privacy controls</small>
+          </button>
+          <p className="advanced-note">
+            Passwords here are for viewers of this one link. They are not an account and are not required.
+          </p>
+
+          {advancedOpen ? (
+            <div id="share-advanced-settings" className="share-controls" aria-label="Share settings">
+              <label className="check-row">
+                <input
+                  aria-label="Require password"
+                  checked={passwordEnabled}
+                  type="checkbox"
+                  onChange={(event) => onPasswordEnabledChange(event.target.checked)}
+                />
+                <Lock size={16} />
+                <span className="check-row-copy">
+                  <strong>Add viewer password</strong>
+                  <small>Optional code for guests. No account is created.</small>
+                </span>
+              </label>
+              {passwordEnabled ? (
+                <input
+                  aria-label="Share password"
+                  className="share-input"
+                  type="password"
+                  value={password}
+                  onChange={(event) => onPasswordChange(event.target.value)}
+                  placeholder={recording.sharePasswordProtected ? 'Leave unchanged' : 'Set viewer password'}
+                />
+              ) : null}
+
+              <div className="preset-row" aria-label="Expiry presets">
+                <button className="secondary-button compact" type="button" onClick={() => onExpiryPreset('day')}>
+                  24h
+                </button>
+                <button className="secondary-button compact" type="button" onClick={() => onExpiryPreset('week')}>
+                  7d
+                </button>
+                <button className="secondary-button compact" type="button" onClick={() => onExpiryPreset('never')}>
+                  Never
+                </button>
+              </div>
+
+              <label className="field-row">
+                <span>Expires</span>
+                <input
+                  aria-label="Share expiry"
+                  className="share-input"
+                  type="datetime-local"
+                  value={expiresAt}
+                  onChange={(event) => onExpiresAtChange(event.target.value)}
+                />
+              </label>
+
+              <label className="check-row">
+                <input
+                  checked={downloadEnabled}
+                  type="checkbox"
+                  onChange={(event) => onDownloadEnabledChange(event.target.checked)}
+                />
+                <Download size={16} />
+                Allow downloads
+              </label>
+
+              <div className="share-settings-preview" aria-label="Share settings summary">
+                <StatusChip
+                  tone={passwordEnabled ? 'good' : 'neutral'}
+                  icon={passwordEnabled ? <ShieldCheck size={15} /> : <Lock size={15} />}
+                  label={pendingPasswordLabel}
+                />
+                <StatusChip
+                  tone={expiresAt ? 'good' : 'neutral'}
+                  icon={<Clock size={15} />}
+                  label={pendingExpiryLabel}
+                />
+                <StatusChip
+                  tone={downloadEnabled ? 'good' : 'neutral'}
+                  icon={<Download size={15} />}
+                  label={pendingDownloadLabel}
+                />
+              </div>
+            </div>
+          ) : null}
+        </section>
+
         {copyFallbackVisible ? (
           <section className="copy-fallback-card" aria-label="Copy fallback">
             <strong>Clipboard fallback</strong>
@@ -2246,21 +2294,11 @@ function ShareDialog({
         ) : null}
 
         <div className="dialog-actions">
-          <button className="primary-button" type="button" onClick={hasActiveShare ? onCopy : onSave}>
-            {hasActiveShare ? <Copy size={16} /> : <Link2 size={16} />}
-            {primaryShareActionLabel}
-          </button>
           {hasActiveShare ? (
             <button className="secondary-button" type="button" onClick={onSave}>
               <Link2 size={16} />
               Update link
             </button>
-          ) : null}
-          {canShareActions ? (
-            <a className="secondary-link" href={shareUrl ?? ''} target="_blank" rel="noreferrer">
-              <Eye size={16} />
-              View as guest
-            </a>
           ) : null}
           {recording.shareToken ? (
             <button className="danger-outline-button" type="button" onClick={onRevoke}>
@@ -2898,7 +2936,7 @@ function getNextAction(
   }
 
   if (activeStep === 'share') {
-    return 'Lock the link'
+    return 'Copy the link'
   }
 
   if (status === 'recording') {
@@ -2933,8 +2971,8 @@ function getStepGuidance(activeStep: StudioStep, hasReviewDraft: boolean) {
     },
     share: {
       kicker: 'Step 4',
-      title: 'Lock the link',
-      body: 'Create a private guest link, then choose password, expiry, and download access.',
+      title: 'Copy the link',
+      body: 'Create a guest link and copy it. Password, expiry, and download controls are optional.',
     },
     library: {
       kicker: 'Step 5',
