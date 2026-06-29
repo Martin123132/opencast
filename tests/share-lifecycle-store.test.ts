@@ -17,6 +17,7 @@ const isolatedStoreRoot = path.join(appConfig.dataRoot, 'tests', 'share-lifecycl
 const isolatePaths = {
   recordingsDir: path.join(isolatedStoreRoot, 'recordings'),
   thumbnailsDir: path.join(isolatedStoreRoot, 'thumbnails'),
+  backupsDir: path.join(isolatedStoreRoot, 'backups'),
   indexFile: path.join(isolatedStoreRoot, 'index.json'),
   indexBackupsDir: path.join(isolatedStoreRoot, 'index-backups'),
   shareSecretFile: path.join(isolatedStoreRoot, 'share-secret.key'),
@@ -26,6 +27,7 @@ async function withSharedStore<T>(callback: () => Promise<T>) {
   const originalPaths = { ...storagePaths }
   storagePaths.recordingsDir = isolatePaths.recordingsDir
   storagePaths.thumbnailsDir = isolatePaths.thumbnailsDir
+  storagePaths.backupsDir = isolatePaths.backupsDir
   storagePaths.indexFile = isolatePaths.indexFile
   storagePaths.indexBackupsDir = isolatePaths.indexBackupsDir
   storagePaths.shareSecretFile = isolatePaths.shareSecretFile
@@ -38,6 +40,7 @@ async function withSharedStore<T>(callback: () => Promise<T>) {
   } finally {
     storagePaths.recordingsDir = originalPaths.recordingsDir
     storagePaths.thumbnailsDir = originalPaths.thumbnailsDir
+    storagePaths.backupsDir = originalPaths.backupsDir
     storagePaths.indexFile = originalPaths.indexFile
     storagePaths.indexBackupsDir = originalPaths.indexBackupsDir
     storagePaths.shareSecretFile = originalPaths.shareSecretFile

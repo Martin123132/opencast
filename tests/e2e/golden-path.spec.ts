@@ -115,6 +115,9 @@ test('loads config and advances from setup into the recorder path', async ({ pag
   await expect(storageHealth.getByText('Storage health')).toBeVisible()
   await expect(storageHealth.getByText('Space ready')).toBeVisible()
   await expect(storageHealth.getByText('0 indexed')).toBeVisible()
+  await expect(storageHealth.getByRole('button', { name: 'Back up library' })).toBeVisible()
+  await storageHealth.getByRole('button', { name: 'Back up library' }).click()
+  await expect(storageHealth.getByText('Backup ready: 0 recordings copied to')).toBeVisible()
 
   await page.getByRole('button', { name: 'Start' }).click()
 

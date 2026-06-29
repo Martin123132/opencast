@@ -55,6 +55,7 @@ let lastIndexRecovery: IndexRecovery | null = null
 export async function ensureStorage() {
   await mkdir(storagePaths.recordingsDir, { recursive: true })
   await mkdir(storagePaths.thumbnailsDir, { recursive: true })
+  await mkdir(storagePaths.backupsDir, { recursive: true })
   await mkdir(storagePaths.indexBackupsDir, { recursive: true })
 
   try {

@@ -37,6 +37,7 @@ import {
 } from 'lucide-react'
 import './App.css'
 import {
+  createLibraryBackup,
   createShare,
   deleteRecording,
   fetchAppConfig,
@@ -47,7 +48,13 @@ import {
   updateRecording,
   uploadRecording,
 } from './api'
-import type { AppConfig, Recording, RecordingDurationSource, ShareSettingsInput } from './types'
+import type {
+  AppConfig,
+  LibraryBackup,
+  Recording,
+  RecordingDurationSource,
+  ShareSettingsInput,
+} from './types'
 import type { RecorderStatus } from './types'
 import { useScreenRecorder } from './hooks/useScreenRecorder'
 
@@ -131,6 +138,8 @@ function StudioApp() {
   const [librarySort, setLibrarySort] = useState<LibrarySort>('newest')
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null)
   const [configError, setConfigError] = useState<string | null>(null)
+  const [isBackingUp, setIsBackingUp] = useState(false)
+  const [backupStatus, setBackupStatus] = useState<string | null>(null)
   const [setupComplete, setSetupComplete] = useState(() => {
     try {
       return window.localStorage.getItem(setupStorageKey) === 'complete'
@@ -305,6 +314,23 @@ function StudioApp() {
       setLibraryError(caughtError instanceof Error ? caughtError.message : 'Could not load recordings')
     }
   }, [applyShareDefaults, selectedId])
+
+  const handleCreateBackup = useCallback(async () => {
+    setIsBackingUp(true)
+    setBackupStatus(null)
+
+    try {
+      const backup = await createLibraryBackup()
+      const nextConfig = await fetchAppConfig()
+      setAppConfig(nextConfig)
+      setConfigError(null)
+      setBackupStatus(formatBackupStatus(backup))
+    } catch (caughtError) {
+      setBackupStatus(caughtError instanceof Error ? caughtError.message : 'Backup could not be created.')
+    } finally {
+      setIsBackingUp(false)
+    }
+  }, [])
 
   useEffect(() => {
     let isActive = true
@@ -790,6 +816,9 @@ function StudioApp() {
           captureSupported={captureSupported}
           nextAction={nextAction}
           setupComplete={setupComplete}
+          onCreateBackup={handleCreateBackup}
+          isBackingUp={isBackingUp}
+          backupStatus={backupStatus}
         />
 
         <section className="recorder-panel" aria-label="Recorder">
@@ -1546,6 +1575,9 @@ function MissionRail({
   captureSupported,
   nextAction,
   setupComplete,
+  onCreateBackup,
+  isBackingUp,
+  backupStatus,
 }: {
   activeStep: StudioStep
   pathComplete: {
@@ -1559,6 +1591,9 @@ function MissionRail({
   captureSupported: boolean
   nextAction: string
   setupComplete: boolean
+  onCreateBackup: () => void
+  isBackingUp: boolean
+  backupStatus: string | null
 }) {
   const isReviewDraft = activeStep === 'review'
   const stepGuidance = getStepGuidance(activeStep, isReviewDraft)
@@ -1631,12 +1666,27 @@ function MissionRail({
           label={appConfig?.requiredStorageDrive ?? 'D:'}
         />
       </div>
-      <StorageHealthCard storageHealth={appConfig?.storageHealth ?? null} />
+      <StorageHealthCard
+        storageHealth={appConfig?.storageHealth ?? null}
+        onCreateBackup={onCreateBackup}
+        isBackingUp={isBackingUp}
+        backupStatus={backupStatus}
+      />
     </aside>
   )
 }
 
-function StorageHealthCard({ storageHealth }: { storageHealth: AppConfig['storageHealth'] | null }) {
+function StorageHealthCard({
+  storageHealth,
+  onCreateBackup,
+  isBackingUp,
+  backupStatus,
+}: {
+  storageHealth: AppConfig['storageHealth'] | null
+  onCreateBackup: () => void
+  isBackingUp: boolean
+  backupStatus: string | null
+}) {
   const diskTone = getStorageDiskTone(storageHealth?.disk.status ?? 'unknown')
   const libraryTone = getStorageLibraryTone(storageHealth?.library.status ?? 'unreadable')
 
@@ -1666,6 +1716,18 @@ function StorageHealthCard({ storageHealth }: { storageHealth: AppConfig['storag
           Corrupt index preserved at {storageHealth.library.indexBackupPath}
         </p>
       ) : null}
+      <div className="storage-health-actions">
+        <button
+          className="secondary-button compact"
+          type="button"
+          onClick={onCreateBackup}
+          disabled={isBackingUp || !storageHealth}
+        >
+          <Save size={15} />
+          {isBackingUp ? 'Backing up' : 'Back up library'}
+        </button>
+      </div>
+      {backupStatus ? <p className="storage-health-detail">{backupStatus}</p> : null}
     </section>
   )
 }
@@ -2928,6 +2990,16 @@ function getStorageHealthSummary(storageHealth: AppConfig['storageHealth'] | nul
   }
 
   return `${formatStorageBytes(storageHealth.disk.freeBytes)} free. Library index ready.`
+}
+
+function formatBackupStatus(backup: LibraryBackup) {
+  const countLabel = backup.recordingCount === 1 ? '1 recording' : `${backup.recordingCount} recordings`
+
+  if (backup.status === 'complete') {
+    return `Backup ready: ${countLabel} copied to ${backup.path}`
+  }
+
+  return `Partial backup: ${backup.copiedRecordingFiles}/${backup.recordingCount} videos copied to ${backup.path}`
 }
 
 function getDiskHealthLabel(disk: AppConfig['storageHealth']['disk']) {

@@ -33,6 +33,7 @@ export type RecorderStatus =
 export type AppConfig = {
   dataRoot: string
   recordingsDir: string
+  backupsDir: string
   requiredStorageDrive: string
   dataRootCompliant: boolean
   storageHealth: StorageHealth
@@ -53,6 +54,20 @@ export type StorageHealth = {
     indexRecoveredAt: string | null
     indexBackupPath: string | null
   }
+}
+
+export type LibraryBackup = {
+  id: string
+  createdAt: string
+  path: string
+  indexPath: string
+  manifestPath: string
+  recordingCount: number
+  copiedRecordingFiles: number
+  copiedThumbnailFiles: number
+  missingRecordingFiles: number
+  missingThumbnailFiles: number
+  status: 'complete' | 'partial'
 }
 
 export type ShareSettingsInput = {

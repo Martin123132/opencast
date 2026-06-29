@@ -270,6 +270,12 @@
   gap: 6px;
 }
 
+.storage-health-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .storage-health-detail {
   overflow-wrap: anywhere;
 }

@@ -30,6 +30,7 @@ import {
   verifySharePassword,
 } from './shareAccess.js'
 import { getStorageHealth } from './storageHealth.js'
+import { createLibraryBackup } from './libraryBackup.js'
 
 const app = Fastify({
   logger: true,
@@ -72,10 +73,16 @@ app.get('/api/health', async () => ({
 app.get('/api/config', async () => ({
   dataRoot: appConfig.dataRoot,
   recordingsDir: storagePaths.recordingsDir,
+  backupsDir: storagePaths.backupsDir,
   requiredStorageDrive: appConfig.requiredStorageDrive,
   dataRootCompliant: true,
   storageHealth: await getStorageHealth(),
 }))
+
+app.post('/api/backups', async (_, reply) => {
+  const backup = await createLibraryBackup()
+  return reply.code(201).send({ backup })
+})
 
 app.get('/api/recordings', async () => {
   const recordings = await listRecordings()
