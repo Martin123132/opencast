@@ -5,8 +5,10 @@ import {
   ensureStorage,
   getThumbnailFile,
   getVideoFile,
+  importPrivateRecordingCopy,
   listRecordings,
   type Recording,
+  type RecordingDurationSource,
 } from './store.js'
 
 export type LibraryBackup = {
@@ -38,6 +40,16 @@ export type LibraryBackupPreview = LibraryBackup & {
   }>
 }
 
+export type LibraryBackupRestore = {
+  backup: LibraryBackupPreview
+  restoreMode: 'private-copy'
+  restoreStatus: 'complete' | 'partial' | 'unreadable'
+  importedRecordingCount: number
+  skippedRecordingCount: number
+  importedRecordings: Recording[]
+  privacyNote: string
+}
+
 type BackupManifest = LibraryBackup & {
   schemaVersion: 1
   dataRoot: string
@@ -50,6 +62,24 @@ type BackupManifest = LibraryBackup & {
     thumbnailFileName: string | null
   }>
 }
+
+type BackupIndex = {
+  recordings?: BackupRecording[]
+}
+
+type BackupRecording = Partial<
+  Pick<
+    Recording,
+    | 'id'
+    | 'title'
+    | 'fileName'
+    | 'mimeType'
+    | 'thumbnailFileName'
+    | 'thumbnailMimeType'
+    | 'durationMs'
+    | 'durationSource'
+  >
+>
 
 export async function createLibraryBackup(): Promise<LibraryBackup> {
   await ensureStorage()
@@ -137,6 +167,48 @@ export async function getLibraryBackupPreview(id: string): Promise<LibraryBackup
   return readLibraryBackupPreview(backupRoot, id)
 }
 
+export async function restoreLibraryBackup(id: string): Promise<LibraryBackupRestore | null> {
+  const preview = await getLibraryBackupPreview(id)
+
+  if (!preview) {
+    return null
+  }
+
+  if (preview.status === 'unreadable') {
+    return buildRestoreResult(preview, [], preview.recordingCount, 'unreadable')
+  }
+
+  const backupRoot = assertInsideDataRoot(path.join(storagePaths.backupsDir, id))
+  const backupIndex = await readBackupIndex(backupRoot)
+
+  if (!backupIndex) {
+    return buildRestoreResult(preview, [], preview.recordingCount, 'unreadable')
+  }
+
+  const importedRecordings: Recording[] = []
+  let skippedRecordingCount = 0
+  const backupRecordings = backupIndex.recordings ?? []
+
+  for (const recording of backupRecordings) {
+    const restored = await restoreBackupRecording(backupRoot, recording)
+
+    if (restored) {
+      importedRecordings.push(restored)
+    } else {
+      skippedRecordingCount += 1
+    }
+  }
+
+  skippedRecordingCount += Math.max(0, preview.recordingCount - backupRecordings.length)
+
+  const restoreStatus =
+    skippedRecordingCount || preview.missingRecordingFiles || preview.missingThumbnailFiles
+      ? 'partial'
+      : 'complete'
+
+  return buildRestoreResult(preview, importedRecordings, skippedRecordingCount, restoreStatus)
+}
+
 async function readBackupDirectory() {
   try {
     return await readdir(storagePaths.backupsDir, { withFileTypes: true })
@@ -146,6 +218,92 @@ async function readBackupDirectory() {
     }
 
     throw error
+  }
+}
+
+async function readBackupIndex(backupRoot: string): Promise<BackupIndex | null> {
+  const safeBackupRoot = assertInsideDataRoot(backupRoot)
+
+  try {
+    const source = await readFile(path.join(safeBackupRoot, 'index.json'), 'utf8')
+    const parsed = JSON.parse(source) as BackupIndex
+
+    return {
+      recordings: Array.isArray(parsed.recordings) ? parsed.recordings : [],
+    }
+  } catch {
+    return null
+  }
+}
+
+async function restoreBackupRecording(backupRoot: string, recording: BackupRecording) {
+  const fileName = typeof recording.fileName === 'string' ? path.basename(recording.fileName) : ''
+
+  if (!fileName) {
+    return null
+  }
+
+  const sourceVideoPath = path.join(backupRoot, 'recordings', fileName)
+
+  if (!(await pathExists(sourceVideoPath))) {
+    return null
+  }
+
+  const thumbnailSource = await getRestoreThumbnailSource(backupRoot, recording)
+
+  return importPrivateRecordingCopy({
+    title: typeof recording.title === 'string' ? recording.title : 'Restored recording',
+    sourceVideoPath,
+    sourceFileName: fileName,
+    mimeType: typeof recording.mimeType === 'string' ? recording.mimeType : 'video/webm',
+    sourceThumbnailPath: thumbnailSource?.path ?? null,
+    thumbnailMimeType:
+      thumbnailSource && typeof recording.thumbnailMimeType === 'string'
+        ? recording.thumbnailMimeType
+        : null,
+    durationMs: typeof recording.durationMs === 'number' ? recording.durationMs : null,
+    durationSource: normalizeRestoreDurationSource(recording.durationSource),
+  })
+}
+
+async function getRestoreThumbnailSource(backupRoot: string, recording: BackupRecording) {
+  const thumbnailFileName =
+    typeof recording.thumbnailFileName === 'string' ? path.basename(recording.thumbnailFileName) : ''
+
+  if (!thumbnailFileName || typeof recording.thumbnailMimeType !== 'string') {
+    return null
+  }
+
+  const thumbnailPath = path.join(backupRoot, 'thumbnails', thumbnailFileName)
+
+  if (!(await pathExists(thumbnailPath))) {
+    return null
+  }
+
+  return {
+    path: thumbnailPath,
+  }
+}
+
+function normalizeRestoreDurationSource(value: unknown): RecordingDurationSource | null {
+  return value === 'media' || value === 'timer' || value === 'unknown' ? value : null
+}
+
+function buildRestoreResult(
+  backup: LibraryBackupPreview,
+  importedRecordings: Recording[],
+  skippedRecordingCount: number,
+  restoreStatus: LibraryBackupRestore['restoreStatus'],
+): LibraryBackupRestore {
+  return {
+    backup,
+    restoreMode: 'private-copy',
+    restoreStatus,
+    importedRecordingCount: importedRecordings.length,
+    skippedRecordingCount,
+    importedRecordings,
+    privacyNote:
+      'Restored recordings were imported as private local copies. Old public links, passwords, expiry settings, and view counts were not restored.',
   }
 }
 
@@ -187,7 +345,7 @@ async function readLibraryBackupPreview(
       status,
       restoreMode: 'preview-only',
       privacyNote:
-        'Preview only. Restoring should import recordings as private copies and must not reactivate old public share links.',
+        'Restoring imports recordings as private copies and must not reactivate old public share links.',
       recordings: previewRecordings,
     }
   } catch {
@@ -205,7 +363,7 @@ async function readLibraryBackupPreview(
       status: 'unreadable',
       restoreMode: 'preview-only',
       privacyNote:
-        'Preview only. This backup manifest could not be read, so no restore should be attempted from it.',
+        'This backup manifest could not be read, so restore is blocked until the backup is reviewed.',
       recordings: [],
     }
   }

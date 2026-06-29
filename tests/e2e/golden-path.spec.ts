@@ -124,6 +124,7 @@ test('loads config and advances from setup into the recorder path', async ({ pag
   const backupPreview = storageHealth.getByLabel('Backup preview')
   await expect(backupPreview.getByText('Complete backup with 0 recordings.')).toBeVisible()
   await expect(backupPreview.getByText('must not reactivate old public share links')).toBeVisible()
+  await expect(backupPreview.getByRole('button', { name: 'Restore private copies' })).toBeDisabled()
 
   await page.getByRole('button', { name: 'Start' }).click()
 
@@ -143,6 +144,84 @@ test('loads config and advances from setup into the recorder path', async ({ pag
 
   await saveSmokeScreenshot(page, 'setup-transition.png')
   expect(consoleMessages()).toEqual([])
+})
+
+test('restores a backup as private library copies without old guest links', async ({
+  page,
+  request,
+}) => {
+  const consoleMessages = collectConsoleIssues(page)
+  const recording = await createRecording(request, 'Restore fixture')
+  const shareResponse = await request.post(`/api/recordings/${recording.id}/share`, {
+    data: {
+      downloadEnabled: false,
+      password: 'restore-secret',
+    },
+  })
+  const shareBody = (await shareResponse.json()) as {
+    recording: { shareToken: string | null }
+  }
+  const oldGuestHref = `/s/${shareBody.recording.shareToken}`
+
+  expect(shareResponse.ok()).toBeTruthy()
+  expect(shareBody.recording.shareToken).toBeTruthy()
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Start' }).click()
+
+  const storageHealth = page.getByLabel('Storage health')
+  await storageHealth.getByRole('button', { name: 'Back up library' }).click()
+  await expect(storageHealth.getByText('Backup ready: 1 recording copied to')).toBeVisible()
+
+  const deleteResponse = await request.delete(`/api/recordings/${recording.id}`)
+  expect(deleteResponse.ok()).toBeTruthy()
+  await page.reload()
+  await expect(page.getByText('No recordings yet')).toBeVisible()
+
+  await storageHealth.getByRole('button', { name: 'Preview backup' }).click()
+  const backupPreview = storageHealth.getByLabel('Backup preview')
+  await expect(backupPreview.getByText('Restore fixture')).toBeVisible()
+  await expect(backupPreview.getByText('Video ready')).toBeVisible()
+  await backupPreview.getByRole('button', { name: 'Restore private copies' }).click()
+  await expect(storageHealth.getByText('1 private copy restored. Old public links stayed off.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Restore fixture' })).toBeVisible()
+
+  const restoredListResponse = await request.get('/api/recordings')
+  const restoredList = (await restoredListResponse.json()) as {
+    recordings: Array<{
+      id: string
+      title: string
+      shareToken: string | null
+      sharePasswordProtected: boolean
+      shareDownloadEnabled: boolean
+      shareWasRevoked: boolean
+      viewCount: number
+    }>
+  }
+  const restoredRecording = restoredList.recordings.find((item) => item.title === 'Restore fixture')
+
+  expect(restoredRecording?.id).not.toBe(recording.id)
+  expect(restoredRecording?.shareToken).toBeNull()
+  expect(restoredRecording?.sharePasswordProtected).toBe(false)
+  expect(restoredRecording?.shareDownloadEnabled).toBe(true)
+  expect(restoredRecording?.shareWasRevoked).toBe(false)
+  expect(restoredRecording?.viewCount).toBe(0)
+
+  const selected = page.getByLabel('Selected recording')
+  await expect(selected.getByLabel('Recording details').getByText('Private', { exact: true })).toBeVisible()
+  await selected.getByRole('button', { name: 'Share' }).click()
+  const shareDialog = page.getByRole('dialog', { name: 'Share recording' })
+  await expect(shareDialog.getByText('No shared link yet')).toBeVisible()
+  await shareDialog.getByRole('button', { name: 'Close share dialog' }).click()
+
+  await page.goto(oldGuestHref)
+  const unavailableShare = page.getByLabel('Unavailable share', { exact: true })
+  await expect(unavailableShare.getByText('This share link is unavailable.')).toBeVisible()
+  await expect(unavailableShare.getByText('No recording details shown')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Restore fixture' })).toBeHidden()
+
+  await saveSmokeScreenshot(page, 'backup-restore-private-copy.png')
+  expect(consoleMessages().filter((message) => !message.includes('404 (Not Found)'))).toEqual([])
 })
 
 test('guides first-run onboarding from setup to first saved recording and share', async ({ page, request }) => {

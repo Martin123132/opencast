@@ -27,6 +27,7 @@ import {
   Play,
   Radio,
   RefreshCcw,
+  RotateCcw,
   Save,
   ShieldCheck,
   Square,
@@ -47,6 +48,7 @@ import {
   fetchSharedRecording,
   requestShareAccess,
   revokeShare,
+  restoreLibraryBackup,
   updateRecording,
   uploadRecording,
 } from './api'
@@ -54,6 +56,7 @@ import type {
   AppConfig,
   LibraryBackup,
   LibraryBackupPreview,
+  LibraryBackupRestore,
   Recording,
   RecordingDurationSource,
   ShareSettingsInput,
@@ -146,6 +149,7 @@ function StudioApp() {
   const [backups, setBackups] = useState<LibraryBackup[]>([])
   const [backupPreview, setBackupPreview] = useState<LibraryBackupPreview | null>(null)
   const [isPreviewingBackup, setIsPreviewingBackup] = useState(false)
+  const [isRestoringBackup, setIsRestoringBackup] = useState(false)
   const [setupComplete, setSetupComplete] = useState(() => {
     try {
       return window.localStorage.getItem(setupStorageKey) === 'complete'
@@ -355,6 +359,39 @@ function StudioApp() {
       setIsPreviewingBackup(false)
     }
   }, [])
+
+  const handleRestoreBackup = useCallback(async (backup: LibraryBackupPreview) => {
+    setIsRestoringBackup(true)
+    setBackupStatus(null)
+
+    try {
+      const restore = await restoreLibraryBackup(backup.id)
+      const nextRecordings = await fetchRecordings()
+      const nextConfig = await fetchAppConfig()
+      const nextBackups = await fetchLibraryBackups()
+      const selectedRestoredRecording = restore.importedRecordings[0] ?? null
+      const nextSelectedRecording = selectedRestoredRecording
+        ? nextRecordings.find((recording) => recording.id === selectedRestoredRecording.id) ?? selectedRestoredRecording
+        : selectedRecording
+          ? nextRecordings.find((recording) => recording.id === selectedRecording.id) ?? nextRecordings[0] ?? null
+          : nextRecordings[0] ?? null
+
+      setRecordings(nextRecordings)
+      setAppConfig(nextConfig)
+      setBackups(nextBackups)
+      setBackupPreview(restore.backup)
+      setSelectedId(nextSelectedRecording?.id ?? null)
+      setSelectedTitle(nextSelectedRecording?.title ?? '')
+      applyShareDefaults(nextSelectedRecording)
+      setLibraryError(null)
+      setConfigError(null)
+      setBackupStatus(formatBackupRestoreStatus(restore))
+    } catch (caughtError) {
+      setBackupStatus(caughtError instanceof Error ? caughtError.message : 'Backup restore could not be completed.')
+    } finally {
+      setIsRestoringBackup(false)
+    }
+  }, [applyShareDefaults, selectedRecording])
 
   useEffect(() => {
     let isActive = true
@@ -871,6 +908,8 @@ function StudioApp() {
           backupPreview={backupPreview}
           onPreviewBackup={handlePreviewBackup}
           isPreviewingBackup={isPreviewingBackup}
+          onRestoreBackup={handleRestoreBackup}
+          isRestoringBackup={isRestoringBackup}
         />
 
         <section className="recorder-panel" aria-label="Recorder">
@@ -1634,6 +1673,8 @@ function MissionRail({
   backupPreview,
   onPreviewBackup,
   isPreviewingBackup,
+  onRestoreBackup,
+  isRestoringBackup,
 }: {
   activeStep: StudioStep
   pathComplete: {
@@ -1654,6 +1695,8 @@ function MissionRail({
   backupPreview: LibraryBackupPreview | null
   onPreviewBackup: (backup: LibraryBackup) => void
   isPreviewingBackup: boolean
+  onRestoreBackup: (backup: LibraryBackupPreview) => void
+  isRestoringBackup: boolean
 }) {
   const isReviewDraft = activeStep === 'review'
   const stepGuidance = getStepGuidance(activeStep, isReviewDraft)
@@ -1735,6 +1778,8 @@ function MissionRail({
         backupPreview={backupPreview}
         onPreviewBackup={onPreviewBackup}
         isPreviewingBackup={isPreviewingBackup}
+        onRestoreBackup={onRestoreBackup}
+        isRestoringBackup={isRestoringBackup}
       />
     </aside>
   )
@@ -1749,6 +1794,8 @@ function StorageHealthCard({
   backupPreview,
   onPreviewBackup,
   isPreviewingBackup,
+  onRestoreBackup,
+  isRestoringBackup,
 }: {
   storageHealth: AppConfig['storageHealth'] | null
   onCreateBackup: () => void
@@ -1758,6 +1805,8 @@ function StorageHealthCard({
   backupPreview: LibraryBackupPreview | null
   onPreviewBackup: (backup: LibraryBackup) => void
   isPreviewingBackup: boolean
+  onRestoreBackup: (backup: LibraryBackupPreview) => void
+  isRestoringBackup: boolean
 }) {
   const diskTone = getStorageDiskTone(storageHealth?.disk.status ?? 'unknown')
   const libraryTone = getStorageLibraryTone(storageHealth?.library.status ?? 'unreadable')
@@ -1818,13 +1867,28 @@ function StorageHealthCard({
         <strong>Latest backup</strong>
         <p>{latestBackup ? formatBackupHistoryLine(latestBackup) : 'No backups yet'}</p>
       </div>
-      {backupPreview ? <BackupPreview backup={backupPreview} /> : null}
+      {backupPreview ? (
+        <BackupPreview
+          backup={backupPreview}
+          onRestoreBackup={onRestoreBackup}
+          isRestoringBackup={isRestoringBackup}
+        />
+      ) : null}
     </section>
   )
 }
 
-function BackupPreview({ backup }: { backup: LibraryBackupPreview }) {
+function BackupPreview({
+  backup,
+  onRestoreBackup,
+  isRestoringBackup,
+}: {
+  backup: LibraryBackupPreview
+  onRestoreBackup: (backup: LibraryBackupPreview) => void
+  isRestoringBackup: boolean
+}) {
   const visibleRecordings = backup.recordings.slice(0, 3)
+  const canRestoreBackup = backup.status !== 'unreadable' && backup.copiedRecordingFiles > 0
 
   return (
     <section className="backup-preview" aria-label="Backup preview">
@@ -1841,6 +1905,15 @@ function BackupPreview({ backup }: { backup: LibraryBackupPreview }) {
         </ul>
       ) : null}
       <p>{backup.privacyNote}</p>
+      <button
+        className="secondary-button compact"
+        type="button"
+        onClick={() => onRestoreBackup(backup)}
+        disabled={!canRestoreBackup || isRestoringBackup}
+      >
+        <RotateCcw size={15} />
+        {isRestoringBackup ? 'Restoring' : 'Restore private copies'}
+      </button>
     </section>
   )
 }
@@ -3131,7 +3204,7 @@ function formatBackupPreviewSummary(backup: LibraryBackupPreview) {
   const countLabel = backup.recordingCount === 1 ? '1 recording' : `${backup.recordingCount} recordings`
 
   if (backup.status === 'complete') {
-    return `Complete backup with ${countLabel}. Restore is preview-only for now.`
+    return `Complete backup with ${countLabel}. Restore imports private copies only.`
   }
 
   if (backup.status === 'partial') {
@@ -3139,6 +3212,19 @@ function formatBackupPreviewSummary(backup: LibraryBackupPreview) {
   }
 
   return 'Backup manifest needs attention before restore.'
+}
+
+function formatBackupRestoreStatus(restore: LibraryBackupRestore) {
+  const importedLabel =
+    restore.importedRecordingCount === 1
+      ? '1 private copy restored'
+      : `${restore.importedRecordingCount} private copies restored`
+
+  if (restore.restoreStatus === 'partial') {
+    return `${importedLabel}. ${restore.skippedRecordingCount} skipped. Old public links stayed off.`
+  }
+
+  return `${importedLabel}. Old public links stayed off.`
 }
 
 function getDiskHealthLabel(disk: AppConfig['storageHealth']['disk']) {

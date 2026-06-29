@@ -41,6 +41,17 @@ export type ThumbnailUpload = {
   mimetype: string
 }
 
+export type PrivateRecordingImport = {
+  title: string
+  sourceVideoPath: string
+  sourceFileName: string
+  mimeType?: string | null
+  sourceThumbnailPath?: string | null
+  thumbnailMimeType?: string | null
+  durationMs?: number | null
+  durationSource?: RecordingDurationSource | null
+}
+
 type RecordingIndex = {
   recordings: Recording[]
 }
@@ -126,6 +137,72 @@ export async function saveRecording({
     sizeBytes: fileStats.size,
     durationMs,
     durationSource: normalizeDurationSource(durationSource, durationMs),
+    shareToken: null,
+    shareExpiresAt: null,
+    shareWasRevoked: false,
+    shareDownloadEnabled: true,
+    sharePasswordHash: null,
+    sharePasswordSalt: null,
+    viewCount: 0,
+  }
+
+  const index = await readIndex()
+  index.recordings.push(recording)
+  await writeIndex(index)
+
+  return recording
+}
+
+export async function importPrivateRecordingCopy({
+  title,
+  sourceVideoPath,
+  sourceFileName,
+  mimeType,
+  sourceThumbnailPath,
+  thumbnailMimeType,
+  durationMs,
+  durationSource,
+}: PrivateRecordingImport) {
+  await ensureStorage()
+
+  const id = nanoid(12)
+  const now = new Date().toISOString()
+  const safeTitle = normalizeTitle(title)
+  const fileName = `${id}-${safeTitle}${getVideoExtension(sourceFileName, mimeType)}`
+  const finalPath = path.join(storagePaths.recordingsDir, fileName)
+  const tempPath = `${finalPath}.restoring`
+  const normalizedDurationMs = normalizeDurationMs(durationMs)
+  const thumbnailExtension = thumbnailMimeType ? getThumbnailExtension(thumbnailMimeType) : null
+  const thumbnailFileName =
+    sourceThumbnailPath && thumbnailMimeType && thumbnailExtension
+      ? `${id}-poster.${thumbnailExtension}`
+      : null
+
+  await mkdir(storagePaths.recordingsDir, { recursive: true })
+  await copyFile(sourceVideoPath, tempPath)
+  await rename(tempPath, finalPath)
+
+  if (sourceThumbnailPath && thumbnailFileName) {
+    await mkdir(storagePaths.thumbnailsDir, { recursive: true })
+    const finalThumbnailPath = path.join(storagePaths.thumbnailsDir, thumbnailFileName)
+    const tempThumbnailPath = `${finalThumbnailPath}.restoring`
+    await copyFile(sourceThumbnailPath, tempThumbnailPath)
+    await rename(tempThumbnailPath, finalThumbnailPath)
+  }
+
+  const fileStats = await stat(finalPath)
+  const recording: Recording = {
+    id,
+    title: title.trim() || 'Restored recording',
+    createdAt: now,
+    updatedAt: now,
+    fileName,
+    mimeType: mimeType || 'video/webm',
+    thumbnailFileName,
+    thumbnailMimeType: thumbnailFileName ? (thumbnailMimeType ?? null) : null,
+    sizeBytes: fileStats.size,
+    durationMs: normalizedDurationMs,
+    durationSource: normalizeDurationSource(durationSource, normalizedDurationMs),
     shareToken: null,
     shareExpiresAt: null,
     shareWasRevoked: false,
@@ -400,6 +477,24 @@ function getThumbnailExtension(mimetype: string) {
   }
 
   return null
+}
+
+function getVideoExtension(fileName: string, mimeType: string | null | undefined) {
+  const extension = path.extname(fileName).toLowerCase()
+
+  if (/^\.[a-z0-9]{2,8}$/.test(extension)) {
+    return extension
+  }
+
+  if (mimeType === 'video/mp4') {
+    return '.mp4'
+  }
+
+  return '.webm'
+}
+
+function normalizeDurationMs(value: number | null | undefined) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
 }
 
 async function applyShareSettings(recording: Recording, settings: ShareSettingsInput) {

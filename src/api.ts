@@ -2,6 +2,7 @@ import type {
   AppConfig,
   LibraryBackup,
   LibraryBackupPreview,
+  LibraryBackupRestore,
   Recording,
   RecordingDurationSource,
   ShareAccessResponse,
@@ -29,6 +30,10 @@ type BackupsResponse = {
 
 type BackupPreviewResponse = {
   backup: LibraryBackupPreview
+}
+
+type BackupRestoreResponse = {
+  restore: LibraryBackupRestore
 }
 
 export async function fetchRecordings() {
@@ -60,6 +65,14 @@ export async function fetchLibraryBackupPreview(id: string) {
   const response = await fetch(`/api/backups/${encodeURIComponent(id)}`)
   const body = await readJson<BackupPreviewResponse>(response)
   return body.backup
+}
+
+export async function restoreLibraryBackup(id: string) {
+  const response = await fetch(`/api/backups/${encodeURIComponent(id)}/restore`, {
+    method: 'POST',
+  })
+  const body = await readJson<BackupRestoreResponse>(response)
+  return body.restore
 }
 
 export async function fetchSharedRecording(token: string, accessToken?: string) {

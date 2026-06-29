@@ -83,6 +83,16 @@ export type LibraryBackupPreview = LibraryBackup & {
   }>
 }
 
+export type LibraryBackupRestore = {
+  backup: LibraryBackupPreview
+  restoreMode: 'private-copy'
+  restoreStatus: 'complete' | 'partial' | 'unreadable'
+  importedRecordingCount: number
+  skippedRecordingCount: number
+  importedRecordings: Recording[]
+  privacyNote: string
+}
+
 export type ShareSettingsInput = {
   expiresAt?: string | null
   downloadEnabled?: boolean

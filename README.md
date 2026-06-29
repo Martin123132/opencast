@@ -9,7 +9,7 @@ ShareFrame is a local-first screen recorder and private sharing prototype. It re
 - Optional camera overlay composited into the recording canvas
 - WebM output through `MediaRecorder`
 - Local library backed by `D:\open-source\opencast-data`
-- D-drive library backups with visible history, preview-only restore checks, index, video files, poster thumbnails, and a manifest
+- D-drive library backups with visible history, private-copy restore, index, video files, poster thumbnails, and a manifest
 - Tokenized share links at `/s/:token`
 - Range-enabled video streaming for playback
 

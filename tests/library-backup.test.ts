@@ -7,9 +7,17 @@ import {
   createLibraryBackup,
   getLibraryBackupPreview,
   listLibraryBackups,
+  restoreLibraryBackup,
 } from '../server/libraryBackup.ts'
 import { appConfig, storagePaths } from '../server/config.ts'
-import { ensureStorage, saveRecording } from '../server/store.ts'
+import {
+  createShare,
+  deleteRecording,
+  ensureStorage,
+  getRecordingByShareToken,
+  listRecordings,
+  saveRecording,
+} from '../server/store.ts'
 
 const isolatedStoreRoot = path.join(appConfig.dataRoot, 'tests', 'library-backup')
 const isolatePaths = {
@@ -107,6 +115,65 @@ test('marks a listed backup partial when a copied recording file is missing', as
     assert.equal(listedBackups[0]?.status, 'partial')
     assert.equal(listedBackups[0]?.copiedRecordingFiles, 0)
     assert.equal(listedBackups[0]?.missingRecordingFiles, 1)
+
+    const restore = await restoreLibraryBackup(backup.id)
+
+    assert.equal(restore?.restoreStatus, 'partial')
+    assert.equal(restore?.importedRecordingCount, 0)
+    assert.equal(restore?.skippedRecordingCount, 1)
+  })
+})
+
+test('restores a backup as private copies without resurrecting share state', async () => {
+  await withBackupStore(async () => {
+    const recording = await saveRecording({
+      file: buildTestFile(),
+      title: 'Shared backup fixture',
+      durationMs: 3000,
+      durationSource: 'media',
+      thumbnail: {
+        data: Buffer.from('private-restore-poster'),
+        mimetype: 'image/png',
+      },
+    })
+    const sharedRecording = await createShare(recording.id, {
+      downloadEnabled: false,
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      password: 'restore-secret',
+    })
+    const oldShareToken = sharedRecording?.shareToken
+
+    assert.ok(oldShareToken)
+
+    const backup = await createLibraryBackup()
+    await deleteRecording(recording.id)
+
+    const restore = await restoreLibraryBackup(backup.id)
+    const restored = restore?.importedRecordings[0]
+    const recordings = await listRecordings()
+
+    assert.equal(restore?.restoreMode, 'private-copy')
+    assert.equal(restore?.restoreStatus, 'complete')
+    assert.equal(restore?.importedRecordingCount, 1)
+    assert.equal(restore?.skippedRecordingCount, 0)
+    assert.match(restore?.privacyNote ?? '', /Old public links/)
+    assert.equal(recordings.length, 1)
+    assert.ok(restored)
+    assert.notEqual(restored.id, recording.id)
+    assert.equal(restored.title, 'Shared backup fixture')
+    assert.equal(restored.durationMs, 3000)
+    assert.equal(restored.durationSource, 'media')
+    assert.equal(restored.shareToken, null)
+    assert.equal(restored.shareExpiresAt, null)
+    assert.equal(restored.shareWasRevoked, false)
+    assert.equal(restored.shareDownloadEnabled, true)
+    assert.equal(restored.sharePasswordHash, null)
+    assert.equal(restored.sharePasswordSalt, null)
+    assert.equal(restored.viewCount, 0)
+    assert.equal(await getRecordingByShareToken(oldShareToken), null)
+
+    await stat(path.join(isolatePaths.recordingsDir, restored.fileName))
+    await stat(path.join(isolatePaths.thumbnailsDir, restored.thumbnailFileName!))
   })
 })
 

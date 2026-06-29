@@ -34,6 +34,7 @@ import {
   createLibraryBackup,
   getLibraryBackupPreview,
   listLibraryBackups,
+  restoreLibraryBackup,
 } from './libraryBackup.js'
 
 const app = Fastify({
@@ -101,6 +102,26 @@ app.get('/api/backups/:id', async (request, reply) => {
   }
 
   return { backup }
+})
+
+app.post('/api/backups/:id/restore', async (request, reply) => {
+  const { id } = request.params as { id: string }
+  const restore = await restoreLibraryBackup(id)
+
+  if (!restore) {
+    return reply.code(404).send({ error: 'Backup not found' })
+  }
+
+  if (restore.restoreStatus === 'unreadable') {
+    return reply.code(422).send({ error: 'Backup index could not be read safely.' })
+  }
+
+  return {
+    restore: {
+      ...restore,
+      importedRecordings: restore.importedRecordings.map(toPublicRecording),
+    },
+  }
 })
 
 app.get('/api/recordings', async () => {
