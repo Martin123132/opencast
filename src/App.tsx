@@ -41,6 +41,7 @@ import {
   createShare,
   deleteRecording,
   fetchAppConfig,
+  fetchLibraryBackups,
   fetchRecordings,
   fetchSharedRecording,
   requestShareAccess,
@@ -140,6 +141,7 @@ function StudioApp() {
   const [configError, setConfigError] = useState<string | null>(null)
   const [isBackingUp, setIsBackingUp] = useState(false)
   const [backupStatus, setBackupStatus] = useState<string | null>(null)
+  const [backups, setBackups] = useState<LibraryBackup[]>([])
   const [setupComplete, setSetupComplete] = useState(() => {
     try {
       return window.localStorage.getItem(setupStorageKey) === 'complete'
@@ -322,7 +324,9 @@ function StudioApp() {
     try {
       const backup = await createLibraryBackup()
       const nextConfig = await fetchAppConfig()
+      const nextBackups = await fetchLibraryBackups()
       setAppConfig(nextConfig)
+      setBackups(nextBackups)
       setConfigError(null)
       setBackupStatus(formatBackupStatus(backup))
     } catch (caughtError) {
@@ -465,6 +469,30 @@ function StudioApp() {
 
   const handleArmCaptureDiscard = useCallback(() => {
     setCaptureDiscardArmed(true)
+  }, [])
+
+  useEffect(() => {
+    let isActive = true
+
+    fetchLibraryBackups()
+      .then((nextBackups) => {
+        if (!isActive) {
+          return
+        }
+
+        setBackups(nextBackups)
+      })
+      .catch(() => {
+        if (!isActive) {
+          return
+        }
+
+        setBackups([])
+      })
+
+    return () => {
+      isActive = false
+    }
   }, [])
 
   const handleKeepCapture = useCallback(() => {
@@ -819,6 +847,7 @@ function StudioApp() {
           onCreateBackup={handleCreateBackup}
           isBackingUp={isBackingUp}
           backupStatus={backupStatus}
+          backups={backups}
         />
 
         <section className="recorder-panel" aria-label="Recorder">
@@ -1578,6 +1607,7 @@ function MissionRail({
   onCreateBackup,
   isBackingUp,
   backupStatus,
+  backups,
 }: {
   activeStep: StudioStep
   pathComplete: {
@@ -1594,6 +1624,7 @@ function MissionRail({
   onCreateBackup: () => void
   isBackingUp: boolean
   backupStatus: string | null
+  backups: LibraryBackup[]
 }) {
   const isReviewDraft = activeStep === 'review'
   const stepGuidance = getStepGuidance(activeStep, isReviewDraft)
@@ -1671,6 +1702,7 @@ function MissionRail({
         onCreateBackup={onCreateBackup}
         isBackingUp={isBackingUp}
         backupStatus={backupStatus}
+        backups={backups}
       />
     </aside>
   )
@@ -1681,14 +1713,17 @@ function StorageHealthCard({
   onCreateBackup,
   isBackingUp,
   backupStatus,
+  backups,
 }: {
   storageHealth: AppConfig['storageHealth'] | null
   onCreateBackup: () => void
   isBackingUp: boolean
   backupStatus: string | null
+  backups: LibraryBackup[]
 }) {
   const diskTone = getStorageDiskTone(storageHealth?.disk.status ?? 'unknown')
   const libraryTone = getStorageLibraryTone(storageHealth?.library.status ?? 'unreadable')
+  const latestBackup = backups[0] ?? null
 
   return (
     <section className="storage-health-card" aria-label="Storage health">
@@ -1728,6 +1763,10 @@ function StorageHealthCard({
         </button>
       </div>
       {backupStatus ? <p className="storage-health-detail">{backupStatus}</p> : null}
+      <div className="storage-health-backup" aria-label="Backup history">
+        <strong>Latest backup</strong>
+        <p>{latestBackup ? formatBackupHistoryLine(latestBackup) : 'No backups yet'}</p>
+      </div>
     </section>
   )
 }
@@ -3000,6 +3039,18 @@ function formatBackupStatus(backup: LibraryBackup) {
   }
 
   return `Partial backup: ${backup.copiedRecordingFiles}/${backup.recordingCount} videos copied to ${backup.path}`
+}
+
+function formatBackupHistoryLine(backup: LibraryBackup) {
+  const countLabel = backup.recordingCount === 1 ? '1 recording' : `${backup.recordingCount} recordings`
+  const statusLabel =
+    backup.status === 'complete'
+      ? 'Complete'
+      : backup.status === 'partial'
+        ? 'Partial'
+        : 'Needs attention'
+
+  return `${statusLabel}: ${countLabel} at ${formatDate(backup.createdAt)}. ${backup.path}`
 }
 
 function getDiskHealthLabel(disk: AppConfig['storageHealth']['disk']) {

@@ -115,9 +115,11 @@ test('loads config and advances from setup into the recorder path', async ({ pag
   await expect(storageHealth.getByText('Storage health')).toBeVisible()
   await expect(storageHealth.getByText('Space ready')).toBeVisible()
   await expect(storageHealth.getByText('0 indexed')).toBeVisible()
+  await expect(storageHealth.getByLabel('Backup history').getByText('No backups yet')).toBeVisible()
   await expect(storageHealth.getByRole('button', { name: 'Back up library' })).toBeVisible()
   await storageHealth.getByRole('button', { name: 'Back up library' }).click()
   await expect(storageHealth.getByText('Backup ready: 0 recordings copied to')).toBeVisible()
+  await expect(storageHealth.getByLabel('Backup history').getByText('Complete: 0 recordings')).toBeVisible()
 
   await page.getByRole('button', { name: 'Start' }).click()
 
@@ -890,8 +892,9 @@ async function createRecording(request: APIRequestContext, title: string) {
     },
   })
 
-  expect(response.ok()).toBeTruthy()
-  const body = (await response.json()) as {
+  const responseText = await response.text()
+  expect(response.ok(), responseText).toBeTruthy()
+  const body = JSON.parse(responseText) as {
     recording: { id: string; title: string; thumbnailUrl: string }
   }
   return body.recording

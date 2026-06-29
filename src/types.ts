@@ -67,7 +67,7 @@ export type LibraryBackup = {
   copiedThumbnailFiles: number
   missingRecordingFiles: number
   missingThumbnailFiles: number
-  status: 'complete' | 'partial'
+  status: 'complete' | 'partial' | 'unreadable'
 }
 
 export type ShareSettingsInput = {

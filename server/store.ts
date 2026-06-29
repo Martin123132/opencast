@@ -102,10 +102,12 @@ export async function saveRecording({
   const tempPath = `${finalPath}.uploading`
   const storedThumbnail = normalizeThumbnailUpload(id, thumbnail)
 
+  await mkdir(storagePaths.recordingsDir, { recursive: true })
   await pipeline(file.file, createWriteStream(tempPath))
   await rename(tempPath, finalPath)
 
   if (storedThumbnail) {
+    await mkdir(storagePaths.thumbnailsDir, { recursive: true })
     const thumbnailPath = path.join(storagePaths.thumbnailsDir, storedThumbnail.fileName)
     await writeFile(thumbnailPath, storedThumbnail.data)
   }

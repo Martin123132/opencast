@@ -22,6 +22,10 @@ type BackupResponse = {
   backup: LibraryBackup
 }
 
+type BackupsResponse = {
+  backups: LibraryBackup[]
+}
+
 export async function fetchRecordings() {
   const response = await fetch('/api/recordings')
   const body = await readJson<RecordingsResponse>(response)
@@ -39,6 +43,12 @@ export async function createLibraryBackup() {
   })
   const body = await readJson<BackupResponse>(response)
   return body.backup
+}
+
+export async function fetchLibraryBackups() {
+  const response = await fetch('/api/backups')
+  const body = await readJson<BackupsResponse>(response)
+  return body.backups
 }
 
 export async function fetchSharedRecording(token: string, accessToken?: string) {

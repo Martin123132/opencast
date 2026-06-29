@@ -30,7 +30,7 @@ import {
   verifySharePassword,
 } from './shareAccess.js'
 import { getStorageHealth } from './storageHealth.js'
-import { createLibraryBackup } from './libraryBackup.js'
+import { createLibraryBackup, listLibraryBackups } from './libraryBackup.js'
 
 const app = Fastify({
   logger: true,
@@ -83,6 +83,10 @@ app.post('/api/backups', async (_, reply) => {
   const backup = await createLibraryBackup()
   return reply.code(201).send({ backup })
 })
+
+app.get('/api/backups', async () => ({
+  backups: await listLibraryBackups(),
+}))
 
 app.get('/api/recordings', async () => {
   const recordings = await listRecordings()

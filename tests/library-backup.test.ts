@@ -3,7 +3,7 @@ import { readFile, rm, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import { test } from 'node:test'
-import { createLibraryBackup } from '../server/libraryBackup.ts'
+import { createLibraryBackup, listLibraryBackups } from '../server/libraryBackup.ts'
 import { appConfig, storagePaths } from '../server/config.ts'
 import { ensureStorage, saveRecording } from '../server/store.ts'
 
@@ -30,6 +30,7 @@ test('creates a complete D-drive backup with index, recording, thumbnail, and ma
     })
 
     const backup = await createLibraryBackup()
+    const listedBackups = await listLibraryBackups()
 
     assert.equal(backup.status, 'complete')
     assert.equal(backup.recordingCount, 1)
@@ -38,6 +39,9 @@ test('creates a complete D-drive backup with index, recording, thumbnail, and ma
     assert.equal(backup.missingRecordingFiles, 0)
     assert.equal(backup.missingThumbnailFiles, 0)
     assert.ok(backup.path.startsWith(isolatePaths.backupsDir))
+    assert.equal(listedBackups.length, 1)
+    assert.equal(listedBackups[0]?.id, backup.id)
+    assert.equal(listedBackups[0]?.status, 'complete')
 
     await stat(path.join(backup.path, 'recordings', recording.fileName))
     await stat(path.join(backup.path, 'thumbnails', recording.thumbnailFileName!))
@@ -66,6 +70,26 @@ test('creates a complete D-drive backup with index, recording, thumbnail, and ma
         thumbnailFileName: recording.thumbnailFileName,
       },
     ])
+  })
+})
+
+test('marks a listed backup partial when a copied recording file is missing', async () => {
+  await withBackupStore(async () => {
+    const recording = await saveRecording({
+      file: buildTestFile(),
+      title: 'Partial backup fixture',
+      durationMs: 2000,
+    })
+    const backup = await createLibraryBackup()
+
+    await rm(path.join(backup.path, 'recordings', recording.fileName), { force: true })
+
+    const listedBackups = await listLibraryBackups()
+
+    assert.equal(listedBackups.length, 1)
+    assert.equal(listedBackups[0]?.status, 'partial')
+    assert.equal(listedBackups[0]?.copiedRecordingFiles, 0)
+    assert.equal(listedBackups[0]?.missingRecordingFiles, 1)
   })
 })
 
