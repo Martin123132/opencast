@@ -25,5 +25,6 @@ export const storagePaths = {
   recordingsDir: path.join(appConfig.dataRoot, 'recordings'),
   thumbnailsDir: path.join(appConfig.dataRoot, 'thumbnails'),
   indexFile: path.join(appConfig.dataRoot, 'index.json'),
+  indexBackupsDir: path.join(appConfig.dataRoot, 'index-backups'),
   shareSecretFile: path.join(appConfig.dataRoot, 'share-secret.key'),
 }

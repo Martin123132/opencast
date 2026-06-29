@@ -32,6 +32,24 @@ export type AppConfig = {
   recordingsDir: string
   requiredStorageDrive: string
   dataRootCompliant: boolean
+  storageHealth: StorageHealth
+}
+
+export type StorageHealth = {
+  disk: {
+    status: 'ready' | 'low-space' | 'unknown'
+    freeBytes: number | null
+    totalBytes: number | null
+    warningThresholdBytes: number
+  }
+  library: {
+    status: 'ready' | 'recovered' | 'needs-attention' | 'unreadable'
+    recordingCount: number
+    missingRecordingFiles: number
+    missingThumbnailFiles: number
+    indexRecoveredAt: string | null
+    indexBackupPath: string | null
+  }
 }
 
 export type ShareSettingsInput = {

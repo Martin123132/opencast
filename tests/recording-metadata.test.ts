@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { rm } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import { test } from 'node:test'
@@ -8,6 +8,7 @@ import {
   deleteRecording,
   ensureStorage,
   getThumbnailFile,
+  listRecordings,
   saveRecording,
   toPublicRecording,
 } from '../server/store.ts'
@@ -17,6 +18,7 @@ const isolatePaths = {
   recordingsDir: path.join(isolatedStoreRoot, 'recordings'),
   thumbnailsDir: path.join(isolatedStoreRoot, 'thumbnails'),
   indexFile: path.join(isolatedStoreRoot, 'index.json'),
+  indexBackupsDir: path.join(isolatedStoreRoot, 'index-backups'),
   shareSecretFile: path.join(isolatedStoreRoot, 'share-secret.key'),
 }
 
@@ -25,6 +27,7 @@ async function withMetadataStore<T>(callback: () => Promise<T>) {
   storagePaths.recordingsDir = isolatePaths.recordingsDir
   storagePaths.thumbnailsDir = isolatePaths.thumbnailsDir
   storagePaths.indexFile = isolatePaths.indexFile
+  storagePaths.indexBackupsDir = isolatePaths.indexBackupsDir
   storagePaths.shareSecretFile = isolatePaths.shareSecretFile
 
   await rm(isolatedStoreRoot, { force: true, recursive: true })
@@ -36,6 +39,7 @@ async function withMetadataStore<T>(callback: () => Promise<T>) {
     storagePaths.recordingsDir = originalPaths.recordingsDir
     storagePaths.thumbnailsDir = originalPaths.thumbnailsDir
     storagePaths.indexFile = originalPaths.indexFile
+    storagePaths.indexBackupsDir = originalPaths.indexBackupsDir
     storagePaths.shareSecretFile = originalPaths.shareSecretFile
     await rm(isolatedStoreRoot, { force: true, recursive: true })
   }
@@ -78,5 +82,27 @@ test('stores optional recording poster metadata and removes the poster with the 
     await deleteRecording(recording.id)
 
     await assert.rejects(() => getThumbnailFile(recording), { code: 'ENOENT' })
+  })
+})
+
+test('preserves a corrupt library index before recovering to an empty library', async () => {
+  await withMetadataStore(async () => {
+    await mkdir(path.dirname(isolatePaths.indexFile), { recursive: true })
+    await writeFile(isolatePaths.indexFile, '{not valid json', 'utf8')
+
+    const recordings = await listRecordings()
+    assert.deepEqual(recordings, [])
+
+    const backups = await readdir(isolatePaths.indexBackupsDir)
+    assert.equal(backups.length, 1)
+    assert.match(backups[0] ?? '', /^index-corrupt-/)
+
+    const backupSource = await readFile(path.join(isolatePaths.indexBackupsDir, backups[0]!), 'utf8')
+    assert.equal(backupSource, '{not valid json')
+
+    const recoveredIndex = JSON.parse(await readFile(isolatePaths.indexFile, 'utf8')) as {
+      recordings?: unknown[]
+    }
+    assert.deepEqual(recoveredIndex.recordings, [])
   })
 })

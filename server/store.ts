@@ -1,5 +1,5 @@
 import { createReadStream, createWriteStream } from 'node:fs'
-import { mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { nanoid } from 'nanoid'
@@ -42,9 +42,17 @@ type RecordingIndex = {
   recordings: Recording[]
 }
 
+type IndexRecovery = {
+  backupPath: string
+  recoveredAt: string
+}
+
+let lastIndexRecovery: IndexRecovery | null = null
+
 export async function ensureStorage() {
   await mkdir(storagePaths.recordingsDir, { recursive: true })
   await mkdir(storagePaths.thumbnailsDir, { recursive: true })
+  await mkdir(storagePaths.indexBackupsDir, { recursive: true })
 
   try {
     await readFile(storagePaths.indexFile, 'utf8')
@@ -306,7 +314,14 @@ async function readIndex(): Promise<RecordingIndex> {
     const source = await readFile(storagePaths.indexFile, 'utf8')
     const parsed = JSON.parse(source) as RecordingIndex
     return { recordings: (parsed.recordings ?? []).map(normalizeRecording) }
-  } catch {
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return { recordings: [] }
+    }
+
+    const recovery = await preserveCorruptIndex()
+    lastIndexRecovery = recovery
+    await writeIndex({ recordings: [] })
     return { recordings: [] }
   }
 }
@@ -326,6 +341,20 @@ function normalizeTitle(title: string) {
     .replace(/^-+|-+$/g, '')
 
   return normalized.slice(0, 48) || 'recording'
+}
+
+async function preserveCorruptIndex() {
+  await mkdir(storagePaths.indexBackupsDir, { recursive: true })
+  const recoveredAt = new Date().toISOString()
+  const safeTimestamp = recoveredAt.replace(/[:.]/g, '-')
+  const backupPath = path.join(storagePaths.indexBackupsDir, `index-corrupt-${safeTimestamp}.json`)
+
+  await copyFile(storagePaths.indexFile, backupPath)
+
+  return {
+    backupPath,
+    recoveredAt,
+  }
 }
 
 function normalizeThumbnailUpload(id: string, thumbnail: ThumbnailUpload | null | undefined) {
@@ -403,6 +432,10 @@ function normalizeRecording(recording: Recording) {
 
 export function isShareExpired(recording: Recording) {
   return Boolean(recording.shareExpiresAt && Date.parse(recording.shareExpiresAt) <= Date.now())
+}
+
+export function getLastIndexRecovery() {
+  return lastIndexRecovery
 }
 
 function isMissingFileError(error: unknown) {

@@ -25,6 +25,7 @@ import {
   verifyShareAccessToken,
   verifySharePassword,
 } from './shareAccess.js'
+import { getStorageHealth } from './storageHealth.js'
 
 const app = Fastify({
   logger: true,
@@ -51,6 +52,7 @@ app.get('/api/config', async () => ({
   recordingsDir: storagePaths.recordingsDir,
   requiredStorageDrive: appConfig.requiredStorageDrive,
   dataRootCompliant: true,
+  storageHealth: await getStorageHealth(),
 }))
 
 app.get('/api/recordings', async () => {

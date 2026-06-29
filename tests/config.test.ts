@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { isDDrivePath, resolveDataRoot } from '../server/config.ts'
+import { getDiskStatus } from '../server/storageHealth.ts'
 
 test('accepts D-drive data roots', () => {
   assert.equal(isDDrivePath('D:\\open-source\\opencast-data'), true)
@@ -13,4 +14,9 @@ test('rejects C-drive data roots', () => {
     () => resolveDataRoot('C:\\Users\\ollet\\opencast-data'),
     /OPENCAST_DATA_ROOT must stay on D:/,
   )
+})
+
+test('classifies low storage before long recordings are attempted', () => {
+  assert.equal(getDiskStatus(1024, 2048), 'low-space')
+  assert.equal(getDiskStatus(4096, 2048), 'ready')
 })

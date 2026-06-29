@@ -232,6 +232,48 @@
   border-top: 1px solid var(--border);
 }
 
+.storage-health-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.storage-health-heading {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  color: var(--accent-ink);
+}
+
+.storage-health-heading strong {
+  display: block;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.storage-health-heading p,
+.storage-health-detail {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.storage-health-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.storage-health-detail {
+  overflow-wrap: anywhere;
+}
+
 .guide-card {
   display: grid;
   gap: 6px;

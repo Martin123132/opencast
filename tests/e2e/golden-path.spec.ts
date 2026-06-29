@@ -111,6 +111,10 @@ test('loads config and advances from setup into the recorder path', async ({ pag
   await expect(page.getByRole('button', { name: 'Complete room setup' })).toBeVisible()
   await expect(page.getByText('Set up room')).toBeVisible()
   await expect(page.getByLabel('Current guidance').getByText('Confirm the room')).toBeVisible()
+  const storageHealth = page.getByLabel('Storage health')
+  await expect(storageHealth.getByText('Storage health')).toBeVisible()
+  await expect(storageHealth.getByText('Space ready')).toBeVisible()
+  await expect(storageHealth.getByText('0 indexed')).toBeVisible()
 
   await page.getByRole('button', { name: 'Start' }).click()
 

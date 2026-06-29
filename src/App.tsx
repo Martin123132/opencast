@@ -1621,7 +1621,42 @@ function MissionRail({
           label={appConfig?.requiredStorageDrive ?? 'D:'}
         />
       </div>
+      <StorageHealthCard storageHealth={appConfig?.storageHealth ?? null} />
     </aside>
+  )
+}
+
+function StorageHealthCard({ storageHealth }: { storageHealth: AppConfig['storageHealth'] | null }) {
+  const diskTone = getStorageDiskTone(storageHealth?.disk.status ?? 'unknown')
+  const libraryTone = getStorageLibraryTone(storageHealth?.library.status ?? 'unreadable')
+
+  return (
+    <section className="storage-health-card" aria-label="Storage health">
+      <div className="storage-health-heading">
+        <HardDrive size={16} />
+        <div>
+          <strong>Storage health</strong>
+          <p>{getStorageHealthSummary(storageHealth)}</p>
+        </div>
+      </div>
+      <div className="storage-health-chips">
+        <StatusChip
+          tone={diskTone}
+          icon={<HardDrive size={15} />}
+          label={storageHealth ? getDiskHealthLabel(storageHealth.disk) : 'Checking space'}
+        />
+        <StatusChip
+          tone={libraryTone}
+          icon={<ListChecks size={15} />}
+          label={storageHealth ? getLibraryHealthLabel(storageHealth.library) : 'Checking library'}
+        />
+      </div>
+      {storageHealth?.library.indexBackupPath ? (
+        <p className="storage-health-detail">
+          Corrupt index preserved at {storageHealth.library.indexBackupPath}
+        </p>
+      ) : null}
+    </section>
   )
 }
 
@@ -2847,6 +2882,94 @@ function formatBytes(value: number) {
   }
 
   return `${(value / 1024 / 1024).toFixed(1)} MB`
+}
+
+function formatStorageBytes(value: number | null) {
+  if (value === null) {
+    return 'Unknown'
+  }
+
+  if (value >= 1024 * 1024 * 1024) {
+    return `${(value / 1024 / 1024 / 1024).toFixed(1)} GB`
+  }
+
+  return formatBytes(value)
+}
+
+function getStorageHealthSummary(storageHealth: AppConfig['storageHealth'] | null) {
+  if (!storageHealth) {
+    return 'Checking local storage and library index.'
+  }
+
+  if (storageHealth.disk.status === 'low-space') {
+    return `${formatStorageBytes(storageHealth.disk.freeBytes)} free. Clear room before long recordings.`
+  }
+
+  if (storageHealth.library.status === 'recovered') {
+    return 'Recovered a damaged index and preserved a backup.'
+  }
+
+  if (storageHealth.library.status === 'needs-attention') {
+    return 'Library has missing local files. Review before release.'
+  }
+
+  if (storageHealth.library.status === 'unreadable') {
+    return 'Library health could not be checked.'
+  }
+
+  return `${formatStorageBytes(storageHealth.disk.freeBytes)} free. Library index ready.`
+}
+
+function getDiskHealthLabel(disk: AppConfig['storageHealth']['disk']) {
+  if (disk.status === 'unknown') {
+    return 'Space unknown'
+  }
+
+  if (disk.status === 'low-space') {
+    return `Low space: ${formatStorageBytes(disk.freeBytes)}`
+  }
+
+  return `Space ready: ${formatStorageBytes(disk.freeBytes)}`
+}
+
+function getLibraryHealthLabel(library: AppConfig['storageHealth']['library']) {
+  if (library.status === 'recovered') {
+    return 'Index recovered'
+  }
+
+  if (library.status === 'needs-attention') {
+    return 'Files missing'
+  }
+
+  if (library.status === 'unreadable') {
+    return 'Index unreadable'
+  }
+
+  return `${library.recordingCount} indexed`
+}
+
+function getStorageDiskTone(status: AppConfig['storageHealth']['disk']['status']): 'good' | 'bad' | 'neutral' {
+  if (status === 'ready') {
+    return 'good'
+  }
+
+  if (status === 'low-space') {
+    return 'bad'
+  }
+
+  return 'neutral'
+}
+
+function getStorageLibraryTone(status: AppConfig['storageHealth']['library']['status']): 'good' | 'bad' | 'neutral' {
+  if (status === 'ready') {
+    return 'good'
+  }
+
+  if (status === 'recovered') {
+    return 'neutral'
+  }
+
+  return 'bad'
 }
 
 function formatTime(value: number) {
