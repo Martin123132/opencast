@@ -12,6 +12,7 @@ ShareFrame is a local-first screen recorder and private sharing prototype. It re
 - D-drive library backups with visible history, private-copy restore, index, video files, poster thumbnails, and a manifest
 - Visible long-recording guardrails: 2 GB single-recording cap and 5 GB free-space warning
 - Tokenized share links at `/s/:token`
+- Short local rate limit on password-protected share access
 - Range-enabled video streaming for playback
 
 ## D-Drive Storage Rule

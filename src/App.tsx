@@ -2493,6 +2493,10 @@ function normalizeShareAccessError(caughtError: unknown, fallback = 'This share 
     return 'Password did not unlock this share.'
   }
 
+  if (lowered.includes('too many password attempts')) {
+    return 'Too many password attempts. Wait before trying again.'
+  }
+
   if (lowered.includes('request failed with 404') || lowered.includes('request failed with 410')) {
     return 'This share link is unavailable.'
   }

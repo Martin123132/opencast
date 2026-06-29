@@ -29,6 +29,10 @@ import {
   verifyShareAccessToken,
   verifySharePassword,
 } from './shareAccess.js'
+import {
+  createShareRateLimiter,
+  type ShareRateLimitBlocked,
+} from './shareRateLimit.js'
 import { getStorageHealth } from './storageHealth.js'
 import {
   createLibraryBackup,
@@ -44,6 +48,7 @@ const app = Fastify({
 const webRoot = path.resolve('dist')
 const webIndexFile = path.join(webRoot, 'index.html')
 const webBuildAvailable = await pathExists(webIndexFile)
+const shareAccessLimiter = createShareRateLimiter()
 
 await ensureStorage()
 
@@ -311,12 +316,26 @@ app.post('/api/shares/:token/access', async (request, reply) => {
 
   const body = request.body as { password?: string } | undefined
   const password = body?.password ?? ''
+  const rateLimitKey = getShareAccessRateLimitKey(request.ip, token)
+  const rateLimitStatus = shareAccessLimiter.check(rateLimitKey)
+
+  if (!rateLimitStatus.allowed) {
+    return shareAccessRateLimited(reply, rateLimitStatus)
+  }
+
   const passwordMatches = await verifySharePassword(recording, password)
 
   if (!passwordMatches) {
+    const failureStatus = shareAccessLimiter.recordFailure(rateLimitKey)
+
+    if (!failureStatus.allowed) {
+      return shareAccessRateLimited(reply, failureStatus)
+    }
+
     return reply.code(401).send({ error: 'Incorrect password' })
   }
 
+  shareAccessLimiter.recordSuccess(rateLimitKey)
   const accessToken = await createShareAccessToken(recording)
 
   return {
@@ -429,6 +448,20 @@ async function sendVideo(
 
 function shareNotAvailable(reply: FastifyReply, statusCode: number) {
   return reply.code(statusCode).send({ error: 'This share link is unavailable.' })
+}
+
+function shareAccessRateLimited(reply: FastifyReply, status: ShareRateLimitBlocked) {
+  return reply
+    .code(429)
+    .header('Retry-After', status.retryAfterSeconds)
+    .send({
+      error: 'Too many password attempts. Wait before trying again.',
+      retryAfterSeconds: status.retryAfterSeconds,
+    })
+}
+
+function getShareAccessRateLimitKey(remoteAddress: string | undefined, token: string) {
+  return `${remoteAddress ?? 'local'}:${token}`
 }
 
 function parseRange(rangeHeader: string, size: number) {

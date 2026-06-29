@@ -39,6 +39,7 @@ Use this public-safe checklist for human-only capture flows that automated brows
 - Revoke the guest link and confirm the old guest URL shows only non-leaky unavailable copy.
 - Recreate a guest link and confirm the new link works while the old link stays unavailable.
 - Test password, expiry, and playback-only settings on a throwaway recording.
+- Enter wrong share passwords repeatedly and confirm the temporary rate-limit copy stays non-leaky.
 
 ## Evidence
 

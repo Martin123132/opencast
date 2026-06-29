@@ -20,6 +20,7 @@ test('manual QA checklist is linked and covers human-only capture/privacy flows'
     'Create a guest link',
     'Revoke the guest link',
     'non-leaky unavailable copy',
+    'temporary rate-limit copy stays non-leaky',
     'GitHub CI URL',
   ])
   assert.doesNotMatch(checklist, /\bC:[\\/]/i, 'manual QA evidence paths should stay D-drive first')

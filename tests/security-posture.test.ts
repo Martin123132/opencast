@@ -55,3 +55,26 @@ test('recording uploads use the shared guardrail contract and return clear limit
     assert.ok(serverSource.includes(fragment), `Expected upload guardrail contract to include: ${fragment}`)
   }
 })
+
+test('public share password attempts are locally rate limited without exposing recording details', async () => {
+  const serverSource = await readFile('server/index.ts', 'utf8')
+
+  for (const fragment of [
+    'createShareRateLimiter',
+    'shareAccessLimiter.check',
+    'shareAccessLimiter.recordFailure',
+    'shareAccessLimiter.recordSuccess',
+    'shareAccessRateLimited',
+    'Too many password attempts. Wait before trying again.',
+    'Retry-After',
+    '.code(429)',
+  ]) {
+    assert.ok(serverSource.includes(fragment), `Expected share rate-limit contract to include: ${fragment}`)
+  }
+
+  assert.doesNotMatch(
+    serverSource,
+    /Too many password attempts[\s\S]*recording\.title/,
+    'Rate-limit responses should not include private recording details',
+  )
+})

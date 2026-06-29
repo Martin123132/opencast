@@ -689,6 +689,41 @@ test('applies password expiry and playback-only share settings for guests', asyn
   expect(consoleMessages().filter((message) => !message.includes('401 (Unauthorized)'))).toEqual([])
 })
 
+test('rate limits repeated wrong share passwords without exposing recording details', async ({ request }) => {
+  const recording = await createRecording(request, 'Rate limit fixture')
+  const shareResponse = await request.post(`/api/recordings/${recording.id}/share`, {
+    data: { password: 'correct-pass' },
+  })
+  const shareBody = (await shareResponse.json()) as {
+    recording: { shareToken: string | null }
+  }
+  const shareToken = shareBody.recording.shareToken
+
+  expect(shareResponse.ok()).toBeTruthy()
+  expect(shareToken).toBeTruthy()
+
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    const response = await request.post(`/api/shares/${shareToken}/access`, {
+      data: { password: `wrong-pass-${attempt}` },
+    })
+    const body = (await response.json()) as { error: string }
+
+    expect(response.status()).toBe(401)
+    expect(body.error).toBe('Incorrect password')
+  }
+
+  const limitedResponse = await request.post(`/api/shares/${shareToken}/access`, {
+    data: { password: 'wrong-pass-5' },
+  })
+  const limitedBody = (await limitedResponse.json()) as { error: string; retryAfterSeconds?: number }
+
+  expect(limitedResponse.status()).toBe(429)
+  expect(limitedResponse.headers()['retry-after']).toBeTruthy()
+  expect(limitedBody.error).toBe('Too many password attempts. Wait before trying again.')
+  expect(limitedBody.retryAfterSeconds).toBeGreaterThan(0)
+  expect(JSON.stringify(limitedBody)).not.toContain('Rate limit fixture')
+})
+
 test('revokes a shared link, blocks old guest links, and recreates', async ({ page, request }) => {
   const recording = await createRecording(request, 'Revoke lifecycle fixture')
 
