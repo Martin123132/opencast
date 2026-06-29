@@ -1,5 +1,5 @@
 import { statfs } from 'node:fs/promises'
-import { appConfig } from './config.js'
+import { appConfig, recordingGuardrails } from './config.js'
 import {
   getLastIndexRecovery,
   getThumbnailFile,
@@ -8,7 +8,7 @@ import {
   type Recording,
 } from './store.js'
 
-export const storageWarningThresholdBytes = 5 * 1024 * 1024 * 1024
+export const storageWarningThresholdBytes = recordingGuardrails.storageWarningThresholdBytes
 
 export type StorageHealth = {
   disk: {

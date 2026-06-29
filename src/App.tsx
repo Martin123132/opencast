@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import {
+  AlertTriangle,
   Camera,
   Check,
   CheckCircle2,
@@ -82,6 +83,12 @@ type PreflightItem = {
 
 const setupStorageKey = 'opencast.setup.v1'
 const undoDeleteWindowMs = 4000
+const fallbackRecordingGuardrails = {
+  maxRecordingBytes: 2 * 1024 * 1024 * 1024,
+  maxUploadOverheadBytes: 16 * 1024 * 1024,
+  storageWarningThresholdBytes: 5 * 1024 * 1024 * 1024,
+  longRecordingWarningMs: 60 * 60 * 1000,
+}
 const copyBlockedStatus =
   'Copy blocked. Select the guest link, or use Preview guest view and copy the address from the browser.'
 
@@ -142,6 +149,7 @@ function StudioApp() {
   const [libraryError, setLibraryError] = useState<string | null>(null)
   const [libraryQuery, setLibraryQuery] = useState('')
   const [librarySort, setLibrarySort] = useState<LibrarySort>('newest')
+  const [draftSaveError, setDraftSaveError] = useState<string | null>(null)
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null)
   const [configError, setConfigError] = useState<string | null>(null)
   const [isBackingUp, setIsBackingUp] = useState(false)
@@ -220,6 +228,14 @@ function StudioApp() {
   const hasReviewDraft = status === 'ready'
   const hasLibraryRecording = recordings.length > 0
   const hasSharedRecording = recordings.some((recording) => recording.shareToken)
+  const recordingGuardrails = appConfig?.recordingGuardrails ?? fallbackRecordingGuardrails
+  const draftSizeStatus = recordingBlob
+    ? getDraftSizeStatus(recordingBlob.size, recordingGuardrails.maxRecordingBytes)
+    : 'ready'
+  const isDraftTooLarge = draftSizeStatus === 'too-large'
+  const isLongDraft = Boolean(
+    durationMs !== null && durationMs >= recordingGuardrails.longRecordingWarningMs,
+  )
   const captureDiscardPending = captureDiscardArmed && hasActiveCapture
   const draftRestartPending = draftRestartArmed && status === 'ready' && recordingBlob !== null
   const firstRunPathReady = useMemo(
@@ -274,6 +290,8 @@ function StudioApp() {
     micEnabled,
     cameraEnabled,
     status,
+    recordingGuardrails,
+    diskStatus: appConfig?.storageHealth.disk.status ?? 'unknown',
   })
   const selectedShareState = selectedRecording ? getRecordingShareState(selectedRecording) : 'private'
   const selectedActiveShareUrl = selectedRecording && selectedShareState === 'shared' ? shareUrl : null
@@ -589,6 +607,17 @@ function StudioApp() {
       return
     }
 
+    setDraftSaveError(null)
+
+    if (isDraftTooLarge) {
+      setDraftSaveError(
+        `Draft is ${formatBytes(recordingBlob.size)}. Single recordings must stay under ${formatBytes(
+          recordingGuardrails.maxRecordingBytes,
+        )}. Download or discard this draft, then record a shorter take.`,
+      )
+      return
+    }
+
     setDraftDiscardArmed(false)
     setDraftRestartArmed(false)
     setIsSaving(true)
@@ -609,10 +638,24 @@ function StudioApp() {
       setShareDialogOpen(true)
       setShareStatus('Saved. Share link ready when you are.')
       setTitle(`Recording ${new Date().toLocaleDateString()}`)
+      setDraftSaveError(null)
+    } catch (caughtError) {
+      setDraftSaveError(caughtError instanceof Error ? caughtError.message : 'Draft could not be saved.')
     } finally {
       setIsSaving(false)
     }
-  }, [applyShareDefaults, durationMs, durationSource, loadLibrary, recordingBlob, resetRecording, thumbnailBlob, title])
+  }, [
+    applyShareDefaults,
+    durationMs,
+    durationSource,
+    isDraftTooLarge,
+    loadLibrary,
+    recordingBlob,
+    recordingGuardrails.maxRecordingBytes,
+    resetRecording,
+    thumbnailBlob,
+    title,
+  ])
 
   const handleRename = useCallback(async () => {
     const nextTitle = selectedTitle.trim()
@@ -910,6 +953,7 @@ function StudioApp() {
           isPreviewingBackup={isPreviewingBackup}
           onRestoreBackup={handleRestoreBackup}
           isRestoringBackup={isRestoringBackup}
+          recordingGuardrails={recordingGuardrails}
         />
 
         <section className="recorder-panel" aria-label="Recorder">
@@ -1199,8 +1243,27 @@ function StudioApp() {
                 <StatusChip icon={<Lock size={15} />} label="Unsaved local draft" tone="neutral" />
                 <StatusChip icon={<Clock size={15} />} label={`${formatTime(durationMs ?? 0)} captured`} tone="neutral" />
                 <StatusChip icon={<Video size={15} />} label={formatDurationSourceLabel(durationSource)} tone="neutral" />
+                <StatusChip
+                  icon={isDraftTooLarge ? <AlertTriangle size={15} /> : <HardDrive size={15} />}
+                  label={`${formatBytes(recordingBlob?.size ?? 0)} draft`}
+                  tone={isDraftTooLarge ? 'bad' : 'neutral'}
+                />
+                {isLongDraft ? (
+                  <StatusChip icon={<Clock size={15} />} label="Long draft" tone="neutral" />
+                ) : null}
                 <StatusChip icon={<Link2 size={15} />} label="Share after save" tone="neutral" />
               </div>
+              {isDraftTooLarge ? (
+                <p className="inline-error" aria-live="polite">
+                  Draft is over the {formatBytes(recordingGuardrails.maxRecordingBytes)} single-recording limit.
+                </p>
+              ) : null}
+              {isLongDraft && !isDraftTooLarge ? (
+                <p className="guardrail-note" aria-live="polite">
+                  Long take. Save before starting another recording and keep D-drive space above{' '}
+                  {formatStorageBytes(recordingGuardrails.storageWarningThresholdBytes)}.
+                </p>
+              ) : null}
               <section className="review-momentum" aria-label="Review momentum">
                 <div className="review-momentum-copy">
                   <strong>Draft ready</strong>
@@ -1234,12 +1297,17 @@ function StudioApp() {
                   type="button"
                   onClick={handleSave}
                   ref={saveButtonRef}
-                  disabled={!recordingBlob || isSaving}
+                  disabled={!recordingBlob || isSaving || isDraftTooLarge}
                 >
                   {isSaving ? <UploadCloud size={17} /> : <Save size={17} />}
                   {isSaving ? 'Saving' : 'Save & open Share'}
                 </button>
               </div>
+              {draftSaveError ? (
+                <p className="inline-error" aria-live="polite">
+                  {draftSaveError}
+                </p>
+              ) : null}
               <div className="review-actions">
                 {previewUrl ? (
                   <a className="secondary-link" href={previewUrl} download={`${normalizeFileName(title)}.webm`}>
@@ -1675,6 +1743,7 @@ function MissionRail({
   isPreviewingBackup,
   onRestoreBackup,
   isRestoringBackup,
+  recordingGuardrails,
 }: {
   activeStep: StudioStep
   pathComplete: {
@@ -1697,6 +1766,7 @@ function MissionRail({
   isPreviewingBackup: boolean
   onRestoreBackup: (backup: LibraryBackupPreview) => void
   isRestoringBackup: boolean
+  recordingGuardrails: AppConfig['recordingGuardrails']
 }) {
   const isReviewDraft = activeStep === 'review'
   const stepGuidance = getStepGuidance(activeStep, isReviewDraft)
@@ -1780,6 +1850,7 @@ function MissionRail({
         isPreviewingBackup={isPreviewingBackup}
         onRestoreBackup={onRestoreBackup}
         isRestoringBackup={isRestoringBackup}
+        recordingGuardrails={recordingGuardrails}
       />
     </aside>
   )
@@ -1796,6 +1867,7 @@ function StorageHealthCard({
   isPreviewingBackup,
   onRestoreBackup,
   isRestoringBackup,
+  recordingGuardrails,
 }: {
   storageHealth: AppConfig['storageHealth'] | null
   onCreateBackup: () => void
@@ -1807,6 +1879,7 @@ function StorageHealthCard({
   isPreviewingBackup: boolean
   onRestoreBackup: (backup: LibraryBackupPreview) => void
   isRestoringBackup: boolean
+  recordingGuardrails: AppConfig['recordingGuardrails']
 }) {
   const diskTone = getStorageDiskTone(storageHealth?.disk.status ?? 'unknown')
   const libraryTone = getStorageLibraryTone(storageHealth?.library.status ?? 'unreadable')
@@ -1838,6 +1911,10 @@ function StorageHealthCard({
           Corrupt index preserved at {storageHealth.library.indexBackupPath}
         </p>
       ) : null}
+      <p className="storage-health-detail">
+        Guardrail: {formatBytes(recordingGuardrails.maxRecordingBytes)} per recording. Keep{' '}
+        {formatStorageBytes(recordingGuardrails.storageWarningThresholdBytes)} free for long takes.
+      </p>
       <div className="storage-health-actions">
         <button
           className="secondary-button compact"
@@ -2699,6 +2776,8 @@ function getRecorderPreflightItems({
   micEnabled,
   cameraEnabled,
   status,
+  recordingGuardrails,
+  diskStatus,
 }: {
   captureSupported: boolean
   storageCompliant: boolean
@@ -2706,6 +2785,8 @@ function getRecorderPreflightItems({
   micEnabled: boolean
   cameraEnabled: boolean
   status: RecorderStatus
+  recordingGuardrails: AppConfig['recordingGuardrails']
+  diskStatus: AppConfig['storageHealth']['disk']['status']
 }): PreflightItem[] {
   const sourceNeedsAttention = status === 'error'
 
@@ -2715,6 +2796,15 @@ function getRecorderPreflightItems({
       value: storageCompliant ? 'D-drive ready' : 'Move to D:',
       icon: <HardDrive size={16} />,
       tone: storageCompliant ? 'good' : 'bad',
+    },
+    {
+      label: 'Limit',
+      value:
+        diskStatus === 'low-space'
+          ? 'Short takes'
+          : `${formatBytes(recordingGuardrails.maxRecordingBytes)} max`,
+      icon: diskStatus === 'low-space' ? <AlertTriangle size={16} /> : <ShieldCheck size={16} />,
+      tone: diskStatus === 'low-space' ? 'warning' : 'neutral',
     },
     {
       label: 'Browser',
@@ -3139,7 +3229,15 @@ function formatBytes(value: number) {
     return `${Math.max(1, Math.round(value / 1024))} KB`
   }
 
+  if (value >= 1024 * 1024 * 1024) {
+    return `${(value / 1024 / 1024 / 1024).toFixed(1)} GB`
+  }
+
   return `${(value / 1024 / 1024).toFixed(1)} MB`
+}
+
+function getDraftSizeStatus(sizeBytes: number, maxBytes: number) {
+  return sizeBytes > maxBytes ? 'too-large' : 'ready'
 }
 
 function formatStorageBytes(value: number | null) {

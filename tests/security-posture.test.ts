@@ -41,3 +41,17 @@ test('private API and share responses are marked no-store', async () => {
     assert.ok(serverSource.includes(fragment), `Expected private cache-control contract to include: ${fragment}`)
   }
 })
+
+test('recording uploads use the shared guardrail contract and return clear limit errors', async () => {
+  const serverSource = await readFile('server/index.ts', 'utf8')
+
+  for (const fragment of [
+    'recordingGuardrails.maxRecordingBytes',
+    'recordingGuardrails.maxUploadOverheadBytes',
+    'isRecordingLimitError',
+    'Recording is too large',
+    'reply.code(413)',
+  ]) {
+    assert.ok(serverSource.includes(fragment), `Expected upload guardrail contract to include: ${fragment}`)
+  }
+})

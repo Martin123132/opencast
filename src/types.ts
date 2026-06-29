@@ -36,6 +36,12 @@ export type AppConfig = {
   backupsDir: string
   requiredStorageDrive: string
   dataRootCompliant: boolean
+  recordingGuardrails: {
+    maxRecordingBytes: number
+    maxUploadOverheadBytes: number
+    storageWarningThresholdBytes: number
+    longRecordingWarningMs: number
+  }
   storageHealth: StorageHealth
 }
 

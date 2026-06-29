@@ -3,7 +3,7 @@ import multipart from '@fastify/multipart'
 import staticFiles from '@fastify/static'
 import { access } from 'node:fs/promises'
 import path from 'node:path'
-import { appConfig, storagePaths } from './config.js'
+import { appConfig, recordingGuardrails, storagePaths } from './config.js'
 import {
   createShare,
   ensureStorage,
@@ -39,7 +39,7 @@ import {
 
 const app = Fastify({
   logger: true,
-  bodyLimit: 1024 * 1024 * 1024 * 2,
+  bodyLimit: recordingGuardrails.maxRecordingBytes + recordingGuardrails.maxUploadOverheadBytes,
 })
 const webRoot = path.resolve('dist')
 const webIndexFile = path.join(webRoot, 'index.html')
@@ -65,8 +65,20 @@ if (webBuildAvailable) {
 await app.register(multipart, {
   limits: {
     files: 2,
-    fileSize: 1024 * 1024 * 1024 * 2,
+    fileSize: recordingGuardrails.maxRecordingBytes,
   },
+})
+
+app.setErrorHandler((error, _, reply) => {
+  if (isRecordingLimitError(error)) {
+    return reply.code(413).send({
+      error: `Recording is too large. Keep single recordings under ${formatServerBytes(
+        recordingGuardrails.maxRecordingBytes,
+      )}.`,
+    })
+  }
+
+  return reply.send(error)
 })
 
 app.get('/api/health', async () => ({
@@ -81,6 +93,7 @@ app.get('/api/config', async () => ({
   backupsDir: storagePaths.backupsDir,
   requiredStorageDrive: appConfig.requiredStorageDrive,
   dataRootCompliant: true,
+  recordingGuardrails,
   storageHealth: await getStorageHealth(),
 }))
 
@@ -511,6 +524,35 @@ function applySecurityHeaders(reply: FastifyReply) {
       'Permissions-Policy',
       'camera=(self), microphone=(self), display-capture=(self), fullscreen=(self), clipboard-write=(self)',
     )
+}
+
+function isRecordingLimitError(error: unknown) {
+  const source = error as {
+    code?: string
+    message?: string
+    statusCode?: number
+  }
+  const message = source.message?.toLowerCase() ?? ''
+
+  return (
+    source.statusCode === 413 ||
+    source.code === 'FST_REQ_FILE_TOO_LARGE' ||
+    source.code === 'FST_ERR_CTP_BODY_TOO_LARGE' ||
+    message.includes('file too large') ||
+    message.includes('request body is too large')
+  )
+}
+
+function formatServerBytes(value: number) {
+  if (value >= 1024 * 1024 * 1024) {
+    return `${(value / 1024 / 1024 / 1024).toFixed(1)} GB`
+  }
+
+  if (value >= 1024 * 1024) {
+    return `${Math.round(value / 1024 / 1024)} MB`
+  }
+
+  return `${Math.max(1, Math.round(value / 1024))} KB`
 }
 
 function isPrivateResponsePath(url: string) {
