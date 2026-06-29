@@ -42,6 +42,28 @@ npm.cmd run dev
 
 The API listens on `http://127.0.0.1:4174`. Vite starts on the first available local port, usually `http://127.0.0.1:5173/`.
 
+## Windows Local Launcher
+
+For a local-first run that feels closer to the v1 app path:
+
+```powershell
+npm.cmd run start:windows
+```
+
+The launcher:
+
+- keeps ShareFrame data at `D:\open-source\opencast-data` unless `OPENCAST_DATA_ROOT` is already set
+- keeps temp files and npm cache on `D:\`
+- installs dependencies when `node_modules` is missing
+- builds the web app and serves it from the local Fastify server
+- opens `http://127.0.0.1:4174/`, or the next free local port if `4174` is busy
+
+Optional flags:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start-shareframe.ps1 -DataRoot D:\open-source\opencast-data -Port 4174 -NoBrowser
+```
+
 ## Checks
 
 ```powershell

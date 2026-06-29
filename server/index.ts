@@ -1,5 +1,8 @@
 import Fastify, { type FastifyReply } from 'fastify'
 import multipart from '@fastify/multipart'
+import staticFiles from '@fastify/static'
+import { access } from 'node:fs/promises'
+import path from 'node:path'
 import { appConfig, storagePaths } from './config.js'
 import {
   createShare,
@@ -31,8 +34,18 @@ const app = Fastify({
   logger: true,
   bodyLimit: 1024 * 1024 * 1024 * 2,
 })
+const webRoot = path.resolve('dist')
+const webIndexFile = path.join(webRoot, 'index.html')
+const webBuildAvailable = await pathExists(webIndexFile)
 
 await ensureStorage()
+
+if (webBuildAvailable) {
+  await app.register(staticFiles, {
+    root: webRoot,
+    prefix: '/',
+  })
+}
 
 await app.register(multipart, {
   limits: {
@@ -417,6 +430,29 @@ function normalizeExpiry(value: string | null | undefined) {
 function getAccessToken(query: unknown) {
   const source = query as { accessToken?: string } | null
   return source?.accessToken
+}
+
+app.setNotFoundHandler((request, reply) => {
+  if (request.url.startsWith('/api/')) {
+    return reply.code(404).send({ error: 'Route not found' })
+  }
+
+  if (!webBuildAvailable) {
+    return reply.code(404).send({
+      error: 'ShareFrame web build not found. Run npm.cmd run build before serving the app.',
+    })
+  }
+
+  return reply.type('text/html').sendFile('index.html')
+})
+
+async function pathExists(filePath: string) {
+  try {
+    await access(filePath)
+    return true
+  } catch {
+    return false
+  }
 }
 
 try {
