@@ -40,6 +40,14 @@ const webBuildAvailable = await pathExists(webIndexFile)
 
 await ensureStorage()
 
+app.addHook('onRequest', async (request, reply) => {
+  applySecurityHeaders(reply)
+
+  if (isPrivateResponsePath(request.url)) {
+    reply.header('Cache-Control', 'no-store')
+  }
+})
+
 if (webBuildAvailable) {
   await app.register(staticFiles, {
     root: webRoot,
@@ -317,6 +325,7 @@ async function sendVideo(
     const response = reply
       .header('Accept-Ranges', 'bytes')
       .header('Content-Type', contentType)
+      .header('Cache-Control', 'no-store')
       .header('Content-Length', video.size)
 
     if (options.attachmentFileName) {
@@ -341,6 +350,7 @@ async function sendVideo(
     .code(206)
     .header('Accept-Ranges', 'bytes')
     .header('Content-Type', contentType)
+    .header('Cache-Control', 'no-store')
     .header('Content-Length', chunkSize)
     .header('Content-Range', `bytes ${range.start}-${range.end}/${video.size}`)
 
@@ -430,6 +440,24 @@ function normalizeExpiry(value: string | null | undefined) {
 function getAccessToken(query: unknown) {
   const source = query as { accessToken?: string } | null
   return source?.accessToken
+}
+
+function applySecurityHeaders(reply: FastifyReply) {
+  reply
+    .header('X-Content-Type-Options', 'nosniff')
+    .header('Referrer-Policy', 'no-referrer')
+    .header('X-Frame-Options', 'DENY')
+    .header('Cross-Origin-Opener-Policy', 'same-origin')
+    .header('Cross-Origin-Resource-Policy', 'same-origin')
+    .header('X-Permitted-Cross-Domain-Policies', 'none')
+    .header(
+      'Permissions-Policy',
+      'camera=(self), microphone=(self), display-capture=(self), fullscreen=(self), clipboard-write=(self)',
+    )
+}
+
+function isPrivateResponsePath(url: string) {
+  return url.startsWith('/api/') || url === '/s' || url.startsWith('/s/')
 }
 
 app.setNotFoundHandler((request, reply) => {

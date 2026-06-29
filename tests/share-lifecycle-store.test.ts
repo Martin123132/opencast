@@ -72,6 +72,7 @@ test('records revoked share state in persisted recording metadata', async () => 
     }
 
     const revokedToken = created.shareToken
+    assert.equal(revokedToken.length, 20)
     assert.equal(created?.shareWasRevoked, false)
 
     const revoked = await revokeShare(recording.id)
@@ -97,6 +98,7 @@ test('recreate clears revoked flag and rotates share token', async () => {
     }
 
     const firstToken = firstShare.shareToken
+    assert.equal(firstToken.length, 20)
 
     await revokeShare(recording.id)
 
@@ -106,6 +108,7 @@ test('recreate clears revoked flag and rotates share token', async () => {
     }
 
     const recreatedToken = recreated.shareToken
+    assert.equal(recreatedToken.length, 20)
     assert.equal(recreated.shareWasRevoked, false)
     assert.notEqual(recreatedToken, firstToken)
 

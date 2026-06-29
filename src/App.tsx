@@ -714,7 +714,6 @@ function StudioApp() {
       setSelectedTitle(shared.title)
       setShareUrl(nextUrl)
       setSharePassword('')
-      setShareDialogOpen(true)
 
       if (nextUrl) {
         await copyShareLink(nextUrl, isUpdating ? 'Share link updated and copied.' : 'Share link created and copied.')
