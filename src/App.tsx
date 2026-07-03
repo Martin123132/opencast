@@ -1579,7 +1579,7 @@ function StudioApp() {
                 </div>
                 <div>
                   <dt>Access</dt>
-                  <dd>{selectedRecording.sharePasswordProtected ? 'Password required' : 'No password'}</dd>
+                  <dd>{selectedRecording.sharePasswordProtected ? 'Viewer password' : 'No viewer password'}</dd>
                 </div>
                 <div>
                   <dt>Downloads</dt>
@@ -2089,7 +2089,7 @@ function ShareDialog({
           <div>
             <h2>Share</h2>
             <p>{recording.title}</p>
-            <p>No account needed. Create a local guest link, then copy it.</p>
+            <p>No account. No required password. Create a local guest link, copy it, send it.</p>
           </div>
           <button
             aria-label="Close share dialog"
@@ -2129,11 +2129,25 @@ function ShareDialog({
               <div>
                 <strong>{canRecreateLink ? 'Create a fresh guest link' : 'Create a guest link'}</strong>
                 <p>
-                  ShareFrame makes a private local URL for this recording. There is no sign-up, cloud account, or
-                  password setup unless you open advanced settings.
+                  This stays local to this ShareFrame app. Passwords, expiry, and download limits are optional
+                  protection settings.
                 </p>
               </div>
             </div>
+            <ol className="share-ready-steps" aria-label="Simple sharing path">
+              <li className="active">
+                <span>1</span>
+                Create link
+              </li>
+              <li>
+                <span>2</span>
+                Copy link
+              </li>
+              <li>
+                <span>3</span>
+                Send it
+              </li>
+            </ol>
             <button className="primary-button" type="button" onClick={onSave}>
               <Link2 size={16} />
               {linkActionLabel}
@@ -2162,6 +2176,22 @@ function ShareDialog({
                 View as guest
               </a>
             </div>
+            <ol className="share-ready-steps" aria-label="Simple sharing path">
+              <li className="complete">
+                <span>
+                  <Check size={13} />
+                </span>
+                Link created
+              </li>
+              <li className="active">
+                <span>2</span>
+                Copy link
+              </li>
+              <li>
+                <span>3</span>
+                Send it
+              </li>
+            </ol>
             <div className="share-preview-card" aria-label="Guest preview checklist">
               <div>
                 <strong>Preview before sending</strong>
@@ -2199,11 +2229,11 @@ function ShareDialog({
             onClick={() => setAdvancedOpen((value) => !value)}
           >
             <ShieldCheck size={16} />
-            <span>Advanced link settings</span>
-            <small>Optional privacy controls</small>
+            <span>Optional protection</span>
+            <small>Password, expiry, downloads</small>
           </button>
           <p className="advanced-note">
-            Passwords here are for viewers of this one link. They are not an account and are not required.
+            Open this only when you want to protect the guest link. It never creates an account.
           </p>
 
           {advancedOpen ? (
@@ -3177,7 +3207,7 @@ function getRecordingOwnerPathAction(
   if (shareState === 'shared' && activeShareUrl) {
     return {
       label: 'Share this recording now',
-      hint: 'Copy the guest link and send it to your audience.',
+      hint: 'Copy the local guest link and send it. No account required.',
       actionLabel: 'Copy guest link',
       type: 'copy-link',
     }
@@ -3194,7 +3224,7 @@ function getRecordingOwnerPathAction(
 
   return {
     label: 'Ready to share this recording',
-    hint: 'Create a link when you are ready to send it out.',
+    hint: 'Create a local guest link. Password protection is optional.',
     actionLabel: 'Create guest link',
     type: 'open-share-dialog',
   }
@@ -3204,7 +3234,7 @@ function getRecordingShareOwnerHint(recording: Recording) {
   const shareState = getRecordingShareState(recording)
 
   if (shareState === 'shared') {
-    return 'Active guest link is ready. Use Copy link for instant sharing, or unshare when access should stop.'
+    return 'Active guest link is ready. Copy it when you want to share, or unshare when access should stop.'
   }
 
   if (shareState === 'expired') {
@@ -3215,7 +3245,7 @@ function getRecordingShareOwnerHint(recording: Recording) {
     return 'This recording had a link that was revoked. Recreate when you want to share again.'
   }
 
-  return 'This recording is private. Use Share and create a link when you are ready to share it.'
+  return 'This recording is private. Create a local guest link only when you are ready to share it.'
 }
 
 function getShareStateTone(value: RecordingShareState): 'good' | 'bad' | 'neutral' {

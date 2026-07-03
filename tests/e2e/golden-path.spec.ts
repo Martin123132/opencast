@@ -518,8 +518,11 @@ test('shows library recordings, validates rename, and opens the share modal', as
   await expect(selected.getByLabel('Share state overview')).toBeVisible()
   const ownerPath = selected.getByLabel('Owner path')
   await expect(ownerPath.getByText('Ready to share this recording')).toBeVisible()
+  await expect(ownerPath.getByText('Password protection is optional')).toBeVisible()
   await expect(ownerPath.getByRole('button', { name: 'Create guest link' })).toBeVisible()
-  await expect(selected.getByText('This recording is private. Use Share and create a link when you are ready to share it.')).toBeVisible()
+  await expect(
+    selected.getByText('This recording is private. Create a local guest link only when you are ready to share it.'),
+  ).toBeVisible()
   await expect(selected.getByRole('button', { name: 'Rename' })).toBeDisabled()
   await expect(selected.getByLabel('Recording details').getByText('Created')).toBeVisible()
   await expect(selected.getByLabel('Recording details').getByText('Size')).toBeVisible()
@@ -571,6 +574,7 @@ test('shows library recordings, validates rename, and opens the share modal', as
 
   await page.getByRole('button', { name: 'Close share dialog' }).click()
   await expect(ownerPath.getByText('Share this recording now')).toBeVisible()
+  await expect(ownerPath.getByText('No account required')).toBeVisible()
   await expect(ownerPath.getByRole('button', { name: 'Copy guest link' })).toBeVisible()
   await ownerPath.getByRole('button', { name: 'Copy guest link' }).click()
   await expect(selected.getByText('Share link copied.')).toBeVisible()
@@ -636,11 +640,13 @@ test('applies password expiry and playback-only share settings for guests', asyn
 
   const shareDialog = page.getByRole('dialog', { name: 'Share recording' })
   await expect(shareDialog).toBeVisible()
-  await expect(shareDialog.getByText('No account needed. Create a local guest link, then copy it.')).toBeVisible()
+  await expect(shareDialog.getByText('No account. No required password.')).toBeVisible()
   await expect(shareDialog.getByText('Create a guest link')).toBeVisible()
-  await expect(shareDialog.getByText('password setup unless you open advanced settings')).toBeVisible()
+  await expect(shareDialog.getByText('Passwords, expiry, and download limits are optional')).toBeVisible()
+  await expect(shareDialog.getByLabel('Simple sharing path').getByText('Create link')).toBeVisible()
   await expect(shareDialog.getByLabel('Share settings summary')).toBeHidden()
-  await shareDialog.getByRole('button', { name: /Advanced link settings/ }).click()
+  await shareDialog.getByRole('button', { name: /Optional protection/ }).click()
+  await expect(shareDialog.getByText('It never creates an account')).toBeVisible()
   await expect(shareDialog.getByLabel('Share settings summary').getByText('No password')).toBeVisible()
   await expect(shareDialog.getByLabel('Share settings summary').getByText('No expiry')).toBeVisible()
   await expect(shareDialog.getByLabel('Share settings summary').getByText('Downloads allowed')).toBeVisible()
