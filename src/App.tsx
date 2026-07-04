@@ -959,9 +959,18 @@ function StudioApp() {
         <section className="recorder-panel" aria-label="Recorder">
           {!setupComplete ? (
             <section className="setup-card" aria-label="Setup">
-              <div>
+              <div className="setup-copy">
                 <h2>Ready Room</h2>
-                <p>{configError ?? 'D-drive storage, browser capture, private sharing.'}</p>
+                <p>{configError ?? 'Local recorder. D-drive library. Private until you create a guest link.'}</p>
+                <div className="local-mode-strip" aria-label="Local mode summary">
+                  <StatusChip tone="good" icon={<Lock size={15} />} label="No account" />
+                  <StatusChip
+                    tone={storageCompliant ? 'good' : 'bad'}
+                    icon={<HardDrive size={15} />}
+                    label={storageCompliant ? 'D-drive library' : 'Storage blocked'}
+                  />
+                  <StatusChip tone="neutral" icon={<Link2 size={15} />} label="Private until shared" />
+                </div>
               </div>
               <button
                 className="primary-button"
