@@ -17,7 +17,7 @@
     "evidence:share-lifecycle": "tsx scripts/share-lifecycle-evidence.ts",
     "lint": "eslint .",
     "start:local": "tsx server/index.ts",
-    "start:windows": "powershell -ExecutionPolicy Bypass -File scripts/start-shareframe.ps1",
+    "start:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-shareframe.ps1",
     "test": "tsx --test tests/*.test.ts",
     "test:e2e": "playwright test",
     "preview": "vite preview"

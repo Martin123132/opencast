@@ -13,17 +13,21 @@ test('Windows launcher command is wired for D-drive local startup', async () => 
   }
   const readme = await readFile('README.md', 'utf8')
   const launcher = await readFile('scripts/start-shareframe.ps1', 'utf8')
+  const commandLauncher = await readFile('scripts/start-shareframe.cmd', 'utf8')
 
   assert.equal(packageJson.scripts?.['start:local'], 'tsx server/index.ts')
   assert.equal(
     packageJson.scripts?.['start:windows'],
-    'powershell -ExecutionPolicy Bypass -File scripts/start-shareframe.ps1',
+    'powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-shareframe.ps1',
   )
 
   for (const fragment of [
     'npm.cmd run start:windows',
+    'scripts\\start-shareframe.cmd',
     'D:\\open-source\\opencast-data',
     'next free local port',
+    'no account required',
+    'private until shared',
     'OPENCAST_DATA_ROOT',
     '-DryRun',
   ]) {
@@ -35,11 +39,23 @@ test('Windows launcher command is wired for D-drive local startup', async () => 
     'OPENCAST_DATA_ROOT',
     'npm_config_cache',
     'Resolve-FreePort',
+    'Write-LauncherHeader',
+    'No account required. Recordings stay on this machine.',
+    'Private until you create a guest link',
     'Dry run complete',
     'Start-Process $appUrl',
     "Invoke-Npm -Arguments @('run', 'start:local')",
   ]) {
     assert.ok(launcher.includes(fragment), `Launcher should include: ${fragment}`)
+  }
+
+  for (const fragment of [
+    '@echo off',
+    'cd /d "%~dp0.."',
+    'powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0start-shareframe.ps1" %*',
+    'ShareFrame stopped with exit code',
+  ]) {
+    assert.ok(commandLauncher.includes(fragment), `Command launcher should include: ${fragment}`)
   }
 })
 
@@ -79,6 +95,9 @@ test(
       )
 
       assert.match(stdout, new RegExp(`Port ${busyPort} is busy\\. ShareFrame will use \\d+ instead\\.`))
+      assert.match(stdout, /ShareFrame local launcher/)
+      assert.match(stdout, /No account required\. Recordings stay on this machine\./)
+      assert.match(stdout, /ShareFrame access:\s+Private until you create a guest link/)
       assert.match(stdout, /Dry run complete\. No install, build, browser, or server start was run\./)
       assert.match(stdout, new RegExp(`ShareFrame storage:\\s+${escapeRegExp(dataRoot)}`))
 

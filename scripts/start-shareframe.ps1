@@ -50,6 +50,31 @@ function Invoke-Npm {
   }
 }
 
+function Write-LauncherHeader {
+  Write-Host ''
+  Write-Host 'ShareFrame local launcher'
+  Write-Host 'No account required. Recordings stay on this machine.'
+}
+
+function Write-LaunchSummary {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$DataRootValue,
+    [Parameter(Mandatory = $true)]
+    [string]$AppUrlValue,
+    [Parameter(Mandatory = $true)]
+    [string]$TempRootValue,
+    [Parameter(Mandatory = $true)]
+    [string]$NpmCacheValue
+  )
+
+  Write-Host "ShareFrame storage: $DataRootValue"
+  Write-Host "ShareFrame app:     $AppUrlValue"
+  Write-Host "ShareFrame temp:    $TempRootValue"
+  Write-Host "ShareFrame cache:   $NpmCacheValue"
+  Write-Host 'ShareFrame access:  Private until you create a guest link'
+}
+
 function Test-PortFree {
   param(
     [Parameter(Mandatory = $true)]
@@ -126,13 +151,13 @@ $env:OPENCAST_DATA_ROOT = $resolvedDataRoot
 
 $appUrl = "http://$HostAddress`:$selectedPort/"
 if ($DryRun) {
-  Write-Host ''
-  Write-Host "ShareFrame storage: $resolvedDataRoot"
-  Write-Host "ShareFrame app:     $appUrl"
-  Write-Host "ShareFrame temp:    $tempRoot"
+  Write-LauncherHeader
+  Write-LaunchSummary -DataRootValue $resolvedDataRoot -AppUrlValue $appUrl -TempRootValue $tempRoot -NpmCacheValue $npmCache
   Write-Host 'Dry run complete. No install, build, browser, or server start was run.'
   exit 0
 }
+
+Write-LauncherHeader
 
 if (-not $SkipInstall -and -not (Test-Path (Join-Path $repoRoot 'node_modules'))) {
   Write-Host 'Installing ShareFrame dependencies...'
@@ -149,14 +174,15 @@ if (-not $SkipBuild) {
   Invoke-Npm -Arguments @('run', 'build')
 }
 
-Write-Host ''
-Write-Host "ShareFrame storage: $resolvedDataRoot"
-Write-Host "ShareFrame app:     $appUrl"
-Write-Host 'Leave this window open while using ShareFrame.'
+Write-LaunchSummary -DataRootValue $resolvedDataRoot -AppUrlValue $appUrl -TempRootValue $tempRoot -NpmCacheValue $npmCache
+Write-Host 'Stop ShareFrame with Ctrl+C or by closing this window.'
 Write-Host ''
 
 if (-not $NoBrowser) {
+  Write-Host 'Opening ShareFrame in your browser...'
   Start-Process $appUrl
+} else {
+  Write-Host 'Browser launch skipped. Open the ShareFrame app URL above when ready.'
 }
 
 Invoke-Npm -Arguments @('run', 'start:local')

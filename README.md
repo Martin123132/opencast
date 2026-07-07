@@ -53,6 +53,12 @@ For a local-first run that feels closer to the v1 app path:
 npm.cmd run start:windows
 ```
 
+Or double-click/run the Windows wrapper:
+
+```powershell
+scripts\start-shareframe.cmd
+```
+
 The launcher:
 
 - keeps ShareFrame data at `D:\open-source\opencast-data` unless `OPENCAST_DATA_ROOT` is already set
@@ -60,6 +66,7 @@ The launcher:
 - installs dependencies when `node_modules` is missing
 - builds the web app and serves it from the local Fastify server
 - opens `http://127.0.0.1:4174/`, or the next free local port if `4174` is busy
+- prints a local-mode startup summary: no account required, D-drive storage, private until shared
 
 Optional flags:
 
