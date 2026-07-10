@@ -29,7 +29,8 @@ ShareFrame aims to be a local-first, source-available screen recorder and privat
 
 ### 0.4 Distribution
 
-- Desktop packaging plan.
+- Self-contained portable Windows build with D-drive defaults and smoke test.
+- Friendly executable icon and Windows metadata.
 - Local network sharing mode.
 - Signed release artifacts.
 - Import/export settings.

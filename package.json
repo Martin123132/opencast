@@ -7,6 +7,7 @@
     "type": "git",
     "url": "https://github.com/Martin123132/opencast.git"
   },
+  "bin": ".package/server/index.js",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n api,web -c cyan,green \"npm:dev:api\" \"npm:dev:web\"",
@@ -16,10 +17,12 @@
     "build": "tsc -b && vite build",
     "evidence:share-lifecycle": "tsx scripts/share-lifecycle-evidence.ts",
     "lint": "eslint .",
+    "package:windows": "tsx scripts/package-windows.ts && tsx scripts/smoke-windows-package.ts",
     "start:local": "tsx server/index.ts",
     "start:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-shareframe.ps1",
     "test": "tsx --test tests/*.test.ts",
     "test:e2e": "playwright test",
+    "test:package:windows": "tsx scripts/smoke-windows-package.ts",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -34,6 +37,7 @@
     "tsx": "^4.22.4"
   },
   "devDependencies": {
+    "@yao-pkg/pkg": "^6.21.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.61.0",
     "@types/node": "^24.12.3",

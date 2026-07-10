@@ -1,0 +1,36 @@
+ShareFrame {{VERSION}} - Portable Windows build
+================================================
+
+Start ShareFrame
+----------------
+1. Keep this extracted ShareFrame folder on your D: drive.
+2. Double-click ShareFrame.exe.
+3. ShareFrame opens in your normal browser.
+4. Keep the ShareFrame window open while recording. Close it to stop the app.
+
+No account is required. Recordings stay on this machine and are private until
+you create a guest link.
+
+Storage
+-------
+ShareFrame stores recordings, thumbnails, backups, and private share state at:
+
+  D:\ShareFrame\data
+
+Temporary runtime files stay at:
+
+  D:\ShareFrame\temp
+
+The storage location can be changed with OPENCAST_DATA_ROOT, but ShareFrame
+will only accept a D-drive path.
+
+Integrity and licence
+---------------------
+SHA256SUMS.txt contains the checksum for ShareFrame.exe. The source-available
+non-commercial licence, commercial licence information, and notices are in
+this folder.
+
+Commercial use requires a separate written licence from TWO HANDS NETWORK LTD.
+For collaboration, existing products, commercial licensing, or other enquiries:
+
+  Glyn: glyn@twohandsnetwork.co.uk

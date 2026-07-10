@@ -9,6 +9,16 @@ Use this public-safe checklist for human-only capture flows that automated brows
 - Confirm the licence posture is source-available for personal and non-commercial use, with commercial use requiring a written licence.
 - Confirm test recordings use throwaway content only.
 
+## Portable Windows Package
+
+- Run `npm.cmd run package:windows` and confirm the build and packaged smoke test pass.
+- Verify the generated folder, ZIP, checksum, runtime cache, and smoke-test data stay on `D:\`.
+- Extract the ZIP to a fresh D-drive folder and double-click `ShareFrame.exe`.
+- Confirm ShareFrame opens in the default browser without asking for Node.js, npm, an account, or an installation path.
+- Confirm the packaged app reports `D:\ShareFrame\data` and creates no runtime output outside `D:\ShareFrame`.
+- Close the ShareFrame console window and confirm the local app URL stops responding.
+- Record whether Windows identifies the development build as unsigned; do not treat it as a signed release candidate.
+
 ## Browser Capture
 
 - Open the app in a current desktop browser.

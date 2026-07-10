@@ -11,6 +11,8 @@ const sharedPathEntries = [
   'COMMERCIAL-LICENSE.md',
   'MANUAL_QA.md',
   'NOTICE.md',
+  'packaging',
+  'pkg.config.mjs',
   'README.md',
   'ROADMAP.md',
   'SHARE_LIFECYCLE_PRIVACY_CHECKLIST.md',
@@ -19,6 +21,7 @@ const sharedPathEntries = [
   'scripts',
   'server',
   'src',
+  'tsconfig.package.json',
   'vite.config.ts',
 ]
 const deliberateNegativeTestFiles = new Set([

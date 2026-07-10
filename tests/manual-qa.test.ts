@@ -11,6 +11,10 @@ test('manual QA checklist is linked and covers human-only capture/privacy flows'
   assertIncludes(checklist, [
     'Confirm the visible data root and all screenshots/logs/evidence are on `D:\\`.',
     'source-available for personal and non-commercial use',
+    'npm.cmd run package:windows',
+    'ShareFrame.exe',
+    'D:\\ShareFrame\\data',
+    'unsigned',
     'browser capture permission prompt',
     'Cancel the picker',
     'Deny permission',

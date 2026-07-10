@@ -77,6 +77,33 @@ powershell -ExecutionPolicy Bypass -File scripts\start-shareframe.ps1 -DataRoot 
 Add `-DryRun` to check the resolved D-drive paths and selected port without installing,
 building, opening the browser, or starting the server.
 
+## Portable Windows Package
+
+Build a self-contained Windows package on `D:`:
+
+```powershell
+npm.cmd run package:windows
+```
+
+The command builds the web app, compiles the local server, creates a stock Node 24
+single executable, and smoke-tests that executable against an isolated D-drive library.
+Generated output is git-ignored at:
+
+```text
+D:\open-source\opencast\release\ShareFrame-0.1.0-win-x64\
+D:\open-source\opencast\release\ShareFrame-0.1.0-win-x64.zip
+D:\open-source\opencast\release\ShareFrame-0.1.0-win-x64.zip.sha256
+```
+
+The extracted package needs no Node.js or npm installation. An end user keeps the
+folder on `D:`, double-clicks `ShareFrame.exe`, and ShareFrame opens in their normal
+browser. Packaged recordings default to `D:\ShareFrame\data`; packaged temp files
+default to `D:\ShareFrame\temp`. The folder also includes startup instructions,
+build information, checksums, notices, and the source-available licence documents.
+
+Current development packages are unsigned. Code signing remains a release task and
+requires a TWO HANDS NETWORK LTD signing certificate.
+
 ## Checks
 
 ```powershell
@@ -85,6 +112,7 @@ npm.cmd run test
 npm.cmd run build
 npm.cmd run test:e2e
 npm.cmd run evidence:share-lifecycle
+npm.cmd run test:package:windows
 ```
 
 Shared privacy contract:

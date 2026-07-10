@@ -3,7 +3,7 @@ import multipart from '@fastify/multipart'
 import staticFiles from '@fastify/static'
 import { access } from 'node:fs/promises'
 import path from 'node:path'
-import { appConfig, recordingGuardrails, storagePaths } from './config.js'
+import { appConfig, recordingGuardrails, runtimeTempRoot, storagePaths } from './config.js'
 import {
   createShare,
   ensureStorage,
@@ -40,16 +40,25 @@ import {
   listLibraryBackups,
   restoreLibraryBackup,
 } from './libraryBackup.js'
+import {
+  ensureRuntimeTempDirectory,
+  isPackagedRuntime,
+  openBrowser,
+  resolveFreePort,
+  resolveWebRoot,
+  shouldOpenBrowser,
+} from './runtime.js'
 
 const app = Fastify({
   logger: true,
   bodyLimit: recordingGuardrails.maxRecordingBytes + recordingGuardrails.maxUploadOverheadBytes,
 })
-const webRoot = path.resolve('dist')
+const webRoot = resolveWebRoot(import.meta.dirname)
 const webIndexFile = path.join(webRoot, 'index.html')
 const webBuildAvailable = await pathExists(webIndexFile)
 const shareAccessLimiter = createShareRateLimiter()
 
+await ensureRuntimeTempDirectory(runtimeTempRoot)
 await ensureStorage()
 
 app.addHook('onRequest', async (request, reply) => {
@@ -616,7 +625,33 @@ async function pathExists(filePath: string) {
 }
 
 try {
-  await app.listen({ host: appConfig.host, port: appConfig.port })
+  const selectedPort = await resolveFreePort(appConfig.host, appConfig.port)
+  const appUrl = `http://${appConfig.host}:${selectedPort}/`
+
+  await app.listen({ host: appConfig.host, port: selectedPort })
+
+  if (selectedPort !== appConfig.port) {
+    app.log.info(`Port ${appConfig.port} is busy. ShareFrame is using ${selectedPort}.`)
+  }
+
+  if (isPackagedRuntime()) {
+    process.stdout.write(
+      [
+        '',
+        'ShareFrame is ready.',
+        'No account required. Recordings stay on this machine.',
+        `App:     ${appUrl}`,
+        `Storage: ${appConfig.dataRoot}`,
+        'Access:  Private until you create a guest link.',
+        'Keep this window open while using ShareFrame. Close it to stop the app.',
+        '',
+      ].join('\n'),
+    )
+  }
+
+  if (shouldOpenBrowser()) {
+    openBrowser(appUrl)
+  }
 } catch (error) {
   app.log.error(error)
   process.exit(1)

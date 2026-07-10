@@ -1,7 +1,9 @@
-import { assertDDrivePath, isDDrivePath as isDDriveStoragePath } from '../scripts/path-guards'
+import { assertDDrivePath, isDDrivePath as isDDriveStoragePath } from '../scripts/path-guards.js'
 import path from 'node:path'
+import { configureRuntimeEnvironment, getDefaultDataRoot } from './runtime.js'
 
-const defaultDataRoot = 'D:\\open-source\\opencast-data'
+export const runtimeTempRoot = configureRuntimeEnvironment()
+const defaultDataRoot = getDefaultDataRoot()
 const requiredStorageDrive = 'D:'
 const defaultMaxRecordingBytes = 2 * 1024 * 1024 * 1024
 const defaultUploadOverheadBytes = 16 * 1024 * 1024
