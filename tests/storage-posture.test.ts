@@ -8,7 +8,9 @@ const cDrivePathPattern = /\bC:[\\/]/i
 const sharedPathEntries = [
   '.env.example',
   '.github',
+  'build',
   'COMMERCIAL-LICENSE.md',
+  'desktop',
   'MANUAL_QA.md',
   'NOTICE.md',
   'packaging',
@@ -21,6 +23,7 @@ const sharedPathEntries = [
   'scripts',
   'server',
   'src',
+  'tsconfig.desktop.json',
   'tsconfig.package.json',
   'vite.config.ts',
 ]
@@ -122,8 +125,14 @@ async function collectTextFiles(targetPath: string): Promise<string[]> {
 function isScannedTextFile(fileName: string) {
   return (
     fileName.endsWith('.example') ||
+    fileName.endsWith('.cjs') ||
+    fileName.endsWith('.css') ||
+    fileName.endsWith('.html') ||
+    fileName.endsWith('.js') ||
     fileName.endsWith('.json') ||
     fileName.endsWith('.md') ||
+    fileName.endsWith('.mjs') ||
+    fileName.endsWith('.nsh') ||
     fileName.endsWith('.ts') ||
     fileName.endsWith('.tsx') ||
     fileName.endsWith('.yaml') ||

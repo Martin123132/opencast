@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 .package
+.desktop
+build/shareframe.ico
+build/shareframe.png
 release
 playwright-report
 test-results

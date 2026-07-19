@@ -77,9 +77,42 @@ powershell -ExecutionPolicy Bypass -File scripts\start-shareframe.ps1 -DataRoot 
 Add `-DryRun` to check the resolved D-drive paths and selected port without installing,
 building, opening the browser, or starting the server.
 
-## Portable Windows Package
+## Installed Windows App
 
-Build a self-contained Windows package on `D:`:
+ShareFrame now builds as a normal Windows desktop application with its own native
+window, guided screen/window picker, single-instance handling, Start Menu and desktop
+shortcuts, and a Windows uninstall entry.
+
+Build the app and NSIS installer on `D:`:
+
+```powershell
+npm.cmd run package:desktop
+```
+
+The command builds the Electron desktop shell, generates branded Windows icons,
+creates the installer, writes its SHA-256 checksum and app-store manifest, then starts
+the unpacked desktop build in hidden smoke mode. Output stays under:
+
+```text
+D:\open-source\opencast\release\desktop\
+```
+
+The installer defaults to `D:\ShareFrame\App`. Recordings remain at
+`D:\ShareFrame\data`; Electron session state, logs, crash dumps, and caches remain at
+`D:\ShareFrame\desktop`; temporary files remain at `D:\ShareFrame\temp`. The installer
+does not remove the recording library during uninstall.
+
+The generated `ShareFrame-<version>-win-x64.app.json` is a public-safe package manifest
+for app-store ingestion. Its installer filename, SHA-256, size, silent install argument,
+licence/contact posture, architecture, and D-drive runtime roots are generated from the
+same build. See [`packaging/APP_STORE.md`](./packaging/APP_STORE.md).
+
+Current development installers are unsigned. Code signing remains a release task and
+requires a TWO HANDS NETWORK LTD signing certificate.
+
+## Portable Browser Fallback
+
+The previous browser-launching portable package remains available as a fallback:
 
 ```powershell
 npm.cmd run package:windows
@@ -112,6 +145,8 @@ npm.cmd run test
 npm.cmd run build
 npm.cmd run test:e2e
 npm.cmd run evidence:share-lifecycle
+npm.cmd run package:desktop
+npm.cmd run test:desktop
 npm.cmd run test:package:windows
 ```
 

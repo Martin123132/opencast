@@ -556,6 +556,10 @@ function getAccessToken(query: unknown) {
 
 function applySecurityHeaders(reply: FastifyReply) {
   reply
+    .header(
+      'Content-Security-Policy',
+      "default-src 'self'; base-uri 'self'; connect-src 'self'; frame-ancestors 'none'; img-src 'self' data: blob:; media-src 'self' blob:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:",
+    )
     .header('X-Content-Type-Options', 'nosniff')
     .header('Referrer-Policy', 'no-referrer')
     .header('X-Frame-Options', 'DENY')

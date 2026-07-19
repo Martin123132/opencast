@@ -30,6 +30,8 @@ ShareFrame aims to be a local-first, source-available screen recorder and privat
 ### 0.4 Distribution
 
 - Self-contained portable Windows build with D-drive defaults and smoke test.
+- Native Electron window with guided capture-source picker and D-drive runtime state.
+- NSIS installer with Start Menu/desktop shortcuts, uninstall entry, and app-store manifest.
 - Friendly executable icon and Windows metadata.
 - Local network sharing mode.
 - Signed release artifacts.

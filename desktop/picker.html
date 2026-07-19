@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Choose what to record</title>
+    <link rel="stylesheet" href="picker.css" />
+  </head>
+  <body>
+    <header class="picker-header">
+      <div>
+        <p class="eyebrow">ShareFrame</p>
+        <h1>Choose what to record</h1>
+        <p class="supporting-copy">Select one screen or window. Nothing starts until you choose.</p>
+      </div>
+      <button class="secondary-button" id="cancel-top" type="button">Cancel</button>
+    </header>
+
+    <main>
+      <div class="source-summary" aria-live="polite" id="source-summary">Finding screens and windows...</div>
+      <div class="source-groups" id="source-groups"></div>
+    </main>
+
+    <footer>
+      <span>Your selection stays on this device.</span>
+      <button class="secondary-button" id="cancel-bottom" type="button">Cancel</button>
+    </footer>
+
+    <script src="picker-renderer.js"></script>
+  </body>
+</html>

@@ -6,6 +6,10 @@ test('server applies privacy headers without opening public CORS', async () => {
   const serverSource = await readFile('server/index.ts', 'utf8')
 
   for (const fragment of [
+    'Content-Security-Policy',
+    "default-src 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
     'X-Content-Type-Options',
     'nosniff',
     'Referrer-Policy',

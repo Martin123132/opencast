@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.node.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": false,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": false,
+    "outDir": ".desktop",
+    "rootDir": ".",
+    "sourceMap": false,
+    "tsBuildInfoFile": ".desktop/tsconfig.desktop.tsbuildinfo"
+  },
+  "include": ["desktop/**/*.ts", "server/**/*.ts", "scripts/path-guards.ts"]
+}

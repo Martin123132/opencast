@@ -19,6 +19,18 @@ Use this public-safe checklist for human-only capture flows that automated brows
 - Close the ShareFrame console window and confirm the local app URL stops responding.
 - Record whether Windows identifies the development build as unsigned; do not treat it as a signed release candidate.
 
+## Installed Windows App
+
+- Run `npm.cmd run package:desktop` and confirm installer creation and the installed-app smoke test pass.
+- Verify the installer, checksum, app-store manifest, Electron cache, and NSIS cache stay on `D:\`.
+- Run `ShareFrame-<version>-win-x64-Setup.exe` and confirm ShareFrame installs to `D:\ShareFrame\App`.
+- Launch ShareFrame from the Start Menu and confirm it opens in its own native window without an account or browser tab.
+- Launch ShareFrame a second time and confirm the existing window is focused instead of starting another local server.
+- Press Record and confirm the ShareFrame source picker lists screens and windows with readable previews.
+- Cancel the source picker and confirm no recording starts; reopen it, choose a throwaway source, and complete a recording.
+- Confirm downloads, session state, logs, crash dumps, cache, temp files, and recordings remain under `D:\ShareFrame`.
+- Uninstall ShareFrame and confirm the application is removed while `D:\ShareFrame\data` remains available.
+
 ## Browser Capture
 
 - Open the app in a current desktop browser.

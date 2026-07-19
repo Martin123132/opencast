@@ -1,13 +1,16 @@
 {
   "name": "opencast",
+  "productName": "ShareFrame",
   "version": "0.1.0",
   "description": "ShareFrame local-first screen recorder and private sharing prototype.",
+  "author": "TWO HANDS NETWORK LTD",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",
     "url": "https://github.com/Martin123132/opencast.git"
   },
   "bin": ".package/server/index.js",
+  "main": ".desktop/desktop/main.js",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n api,web -c cyan,green \"npm:dev:api\" \"npm:dev:web\"",
@@ -15,12 +18,17 @@
     "dev:web": "vite --host 127.0.0.1",
     "dev:e2e": "concurrently -k -n api,web -c cyan,green \"npm.cmd run dev:api\" \"npm.cmd run dev:web -- --port 5181 --strictPort\"",
     "build": "tsc -b && vite build",
+    "desktop:prepare": "tsx scripts/prepare-desktop.ts",
+    "desktop:run": "npm.cmd run desktop:prepare && electron .",
     "evidence:share-lifecycle": "tsx scripts/share-lifecycle-evidence.ts",
     "lint": "eslint .",
+    "package:desktop": "tsx scripts/package-desktop.ts && tsx scripts/smoke-desktop.ts",
     "package:windows": "tsx scripts/package-windows.ts && tsx scripts/smoke-windows-package.ts",
     "start:local": "tsx server/index.ts",
     "start:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-shareframe.ps1",
     "test": "tsx --test tests/*.test.ts",
+    "test:desktop": "tsx scripts/smoke-desktop.ts",
+    "test:desktop:prepared": "tsx scripts/smoke-desktop.ts --prepared",
     "test:e2e": "playwright test",
     "test:package:windows": "tsx scripts/smoke-windows-package.ts",
     "preview": "vite preview"
@@ -44,12 +52,66 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "electron": "^43.1.1",
+    "electron-builder": "^26.15.3",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "png-to-ico": "^3.0.2",
+    "sharp": "^0.35.3",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
     "vite": "^8.0.12"
+  },
+  "build": {
+    "appId": "uk.co.twohandsnetwork.shareframe",
+    "productName": "ShareFrame",
+    "asar": true,
+    "directories": {
+      "buildResources": "build",
+      "output": "release/desktop"
+    },
+    "files": [
+      ".desktop/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "LICENSE",
+        "to": "LICENSE"
+      },
+      {
+        "from": "NOTICE.md",
+        "to": "NOTICE.md"
+      },
+      {
+        "from": "COMMERCIAL-LICENSE.md",
+        "to": "COMMERCIAL-LICENSE.md"
+      }
+    ],
+    "win": {
+      "icon": "build/shareframe.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "allowElevation": false,
+      "artifactName": "ShareFrame-${version}-win-x64-Setup.${ext}",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false,
+      "include": "build/installer.nsh",
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "shortcutName": "ShareFrame"
+    }
   }
 }
